@@ -1,0 +1,7 @@
+{
+    "model_name": "llama-kvcache",
+    "model_or_path": "mha2sha-test-models/llamav2_kvcache/onnx/llamav2_kvcache.onnx",
+    "exported_model_encoding_path": "mha2sha-test-models/llamav2_kvcache/onnx/llamav2_kvcache.encodings",
+    "base_llm": "llama2",
+    "log_level": "info"
+}

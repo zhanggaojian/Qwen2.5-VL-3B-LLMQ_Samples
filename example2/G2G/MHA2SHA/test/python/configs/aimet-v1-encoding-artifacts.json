@@ -1,0 +1,7 @@
+{
+    "model_name": "llama-bertcache-aimet-v1-encodings",
+    "model_or_path": "mha2sha-test-models/aimet-v1-encodings-artifacts/llamav2_bertcache.onnx",
+    "exported_model_encoding_path": "mha2sha-test-models/aimet-v1-encodings-artifacts/new_llamav2_bertcache.encodings",
+    "base_llm": "llama2",
+    "log_level": "info"
+}

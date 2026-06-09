@@ -1,0 +1,80 @@
+INFO:utilities.profiler:Created Latency/Memory profiler: empty_cache=False
+INFO:utilities.profiler:Created RAM watermark daemon process(pid=90223) for pid=90156, polling at 100.0 ms
+INFO:utilities.profiler:memory usage @ 'prepare-export >> ' :  RAM 396.4 MB
+INFO:utilities.profiler:memory usage @ 'prepare-export << ' :  RAM 25.0 GB
+INFO:utilities.profiler:Event prepare-export : time=0:01:01, RAM=24.6 GB(+ 396.4 MB)
+INFO:utilities.profiler:memory usage @ 'split-onnx >> ' :  RAM 405.2 MB
+INFO:utilities.profiler:memory usage @ 'split-onnx << ' :  RAM 405.2 MB
+INFO:utilities.profiler:Event split-onnx : time=0:00:00, RAM=0.0 bytes(+ 405.2 MB)
+INFO:utilities.profiler:memory usage @ 'mha2sha >> ' :  RAM 405.3 MB
+INFO:utilities.profiler:memory usage @ 'mha2sha << ' :  RAM 425.5 MB
+INFO:utilities.profiler:Event mha2sha : time=0:00:00, RAM=20.2 MB(+ 405.3 MB)
+INFO:utilities.profiler:memory usage @ 'convert-onnx >> ' :  RAM 405.3 MB
+INFO:utilities.profiler:memory usage @ 'convert-onnx << ' :  RAM 405.3 MB
+INFO:utilities.profiler:Event convert-onnx : time=0:00:00, RAM=0.0 bytes(+ 405.3 MB)
+INFO:utilities.profiler:memory usage @ 'qairt-quantizer >> ' :  RAM 405.3 MB
+INFO:utilities.profiler:memory usage @ 'qairt-quantizer << ' :  RAM 412.6 MB
+INFO:utilities.profiler:Event qairt-quantizer : time=0:00:00, RAM=7.3 MB(+ 405.3 MB)
+INFO:utilities.profiler:Created Latency/Memory profiler: empty_cache=False
+INFO:utilities.profiler:Created RAM watermark daemon process(pid=228092) for pid=228025, polling at 100.0 ms
+INFO:utilities.profiler:memory usage @ 'prepare-export >> ' :  RAM 398.4 MB
+INFO:utilities.profiler:memory usage @ 'prepare-export << ' :  RAM 24.5 GB
+INFO:utilities.profiler:Event prepare-export : time=0:01:10, RAM=24.1 GB(+ 398.4 MB)
+INFO:utilities.profiler:memory usage @ 'split-onnx >> ' :  RAM 353.6 MB
+INFO:utilities.profiler:memory usage @ 'split-onnx << ' :  RAM 24.5 GB
+INFO:utilities.profiler:Event split-onnx : time=0:00:41, RAM=24.1 GB(+ 353.6 MB)
+INFO:utilities.profiler:memory usage @ 'mha2sha >> ' :  RAM 403.2 MB
+INFO:utilities.profiler:memory usage @ 'mha2sha << ' :  RAM 50.6 GB
+INFO:utilities.profiler:Event mha2sha : time=0:03:46, RAM=50.2 GB(+ 403.2 MB)
+INFO:utilities.profiler:memory usage @ 'convert-onnx >> ' :  RAM 403.2 MB
+INFO:utilities.profiler:memory usage @ 'convert-onnx << ' :  RAM 32.7 GB
+INFO:utilities.profiler:Event convert-onnx : time=0:09:27, RAM=32.3 GB(+ 403.2 MB)
+INFO:utilities.profiler:memory usage @ 'qairt-quantizer >> ' :  RAM 403.3 MB
+INFO:utilities.profiler:memory usage @ 'qairt-quantizer << ' :  RAM 12.6 GB
+INFO:utilities.profiler:Event qairt-quantizer : time=0:00:47, RAM=12.2 GB(+ 403.3 MB)
+INFO:utilities.profiler:Created Latency/Memory profiler: empty_cache=False
+INFO:utilities.profiler:Created RAM watermark daemon process(pid=677096) for pid=677031, polling at 100.0 ms
+INFO:utilities.profiler:memory usage @ 'prepare-export >> ' :  RAM 400.1 MB
+INFO:utilities.profiler:memory usage @ 'prepare-export << ' :  RAM 24.7 GB
+INFO:utilities.profiler:Event prepare-export : time=0:01:03, RAM=24.3 GB(+ 400.1 MB)
+INFO:utilities.profiler:memory usage @ 'split-onnx >> ' :  RAM 404.7 MB
+INFO:utilities.profiler:memory usage @ 'split-onnx << ' :  RAM 24.4 GB
+INFO:utilities.profiler:Event split-onnx : time=0:00:38, RAM=24.0 GB(+ 404.7 MB)
+INFO:utilities.profiler:memory usage @ 'mha2sha >> ' :  RAM 404.8 MB
+INFO:utilities.profiler:memory usage @ 'mha2sha << ' :  RAM 50.8 GB
+INFO:utilities.profiler:Event mha2sha : time=0:03:26, RAM=50.5 GB(+ 404.8 MB)
+INFO:utilities.profiler:memory usage @ 'convert-onnx >> ' :  RAM 403.0 MB
+INFO:utilities.profiler:memory usage @ 'convert-onnx << ' :  RAM 32.7 GB
+INFO:utilities.profiler:Event convert-onnx : time=0:09:13, RAM=32.3 GB(+ 403.0 MB)
+INFO:utilities.profiler:memory usage @ 'qairt-quantizer >> ' :  RAM 403.0 MB
+INFO:utilities.profiler:memory usage @ 'qairt-quantizer << ' :  RAM 41.7 GB
+INFO:utilities.profiler:Event qairt-quantizer : time=0:09:27, RAM=41.3 GB(+ 403.0 MB)
+INFO:utilities.profiler:Created Latency/Memory profiler: empty_cache=False
+INFO:utilities.profiler:Created RAM watermark daemon process(pid=3578579) for pid=3578514, polling at 100.0 ms
+INFO:utilities.profiler:memory usage @ 'prepare-export >> ' :  RAM 399.0 MB
+INFO:utilities.profiler:memory usage @ 'prepare-export << ' :  RAM 25.5 GB
+INFO:utilities.profiler:Event prepare-export : time=0:03:10, RAM=25.1 GB(+ 399.0 MB)
+INFO:utilities.profiler:memory usage @ 'split-onnx >> ' :  RAM 403.6 MB
+INFO:utilities.profiler:memory usage @ 'split-onnx << ' :  RAM 24.4 GB
+INFO:utilities.profiler:Event split-onnx : time=0:02:42, RAM=24.0 GB(+ 403.6 MB)
+INFO:utilities.profiler:memory usage @ 'mha2sha >> ' :  RAM 403.7 MB
+INFO:utilities.profiler:memory usage @ 'mha2sha << ' :  RAM 26.8 GB
+INFO:utilities.profiler:Event mha2sha : time=0:05:55, RAM=26.4 GB(+ 403.7 MB)
+INFO:utilities.profiler:memory usage @ 'convert-onnx >> ' :  RAM 403.7 MB
+INFO:utilities.profiler:memory usage @ 'convert-onnx << ' :  RAM 32.8 GB
+INFO:utilities.profiler:Event convert-onnx : time=0:09:34, RAM=32.4 GB(+ 403.7 MB)
+INFO:utilities.profiler:memory usage @ 'qairt-quantizer >> ' :  RAM 403.7 MB
+INFO:utilities.profiler:memory usage @ 'qairt-quantizer << ' :  RAM 41.7 GB
+INFO:utilities.profiler:Event qairt-quantizer : time=0:10:04, RAM=41.3 GB(+ 403.7 MB)
+INFO:utilities.profiler:Created Latency/Memory profiler: empty_cache=False
+INFO:utilities.profiler:Created RAM watermark daemon process(pid=3832225) for pid=3832136, polling at 100.0 ms
+INFO:utilities.profiler:memory usage @ 'prepare-export >> ' :  RAM 397.7 MB
+INFO:utilities.profiler:memory usage @ 'prepare-export << ' :  RAM 25.2 GB
+INFO:utilities.profiler:Event prepare-export : time=0:00:57, RAM=24.8 GB(+ 397.7 MB)
+INFO:utilities.profiler:memory usage @ 'split-onnx >> ' :  RAM 4.2 GB
+INFO:utilities.profiler:memory usage @ 'split-onnx << ' :  RAM 24.4 GB
+INFO:utilities.profiler:Event split-onnx : time=0:00:36, RAM=20.3 GB(+ 4.2 GB)
+INFO:utilities.profiler:memory usage @ 'mha2sha >> ' :  RAM 402.4 MB
+INFO:utilities.profiler:memory usage @ 'mha2sha << ' :  RAM 52.3 GB
+INFO:utilities.profiler:Event mha2sha : time=0:03:20, RAM=51.9 GB(+ 402.4 MB)
+INFO:utilities.profiler:memory usage @ 'convert-onnx >> ' :  RAM 402.4 MB

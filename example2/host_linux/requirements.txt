@@ -1,0 +1,15 @@
+setuptools==49.4.0
+wheel==0.33.4
+ipykernel==6.29.4
+numpy==1.26.4
+onnx==1.14.1
+onnxruntime==1.15.1
+onnxruntime-extensions==0.11.0
+packaging==24.0
+pandas==1.5.3
+PyYAML==6.0.1
+torch==1.13.1
+protobuf==3.20.2
+tqdm==4.66.2
+safetensors==0.4.3
+rich==13.7.1

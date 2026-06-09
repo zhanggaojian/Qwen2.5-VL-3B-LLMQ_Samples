@@ -1,0 +1,7 @@
+QNN_SDK_ROOT: /home/zgj/workPro/tools/v2.42.0.251225/qairt/2.42.0.251225
+model_name: qwen25llm
+model_id: /home/zgj/workPro/Qwen25/models/Qwen2.5-VL-3B-Instruct
+cache_dir: /home/zgj/workPro/Qwen25/outputs/cache
+output_dir: /home/zgj/workPro/Qwen25/outputs/output
+calibration_dataset_path: /home/zgj/workPro/data/llava_v1_5_mix665k.json
+ppl_evaluation_dataset_path: /home/zgj/workPro/data/llava_v1_5_mix665k.json

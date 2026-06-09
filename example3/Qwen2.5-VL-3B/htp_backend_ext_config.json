@@ -1,0 +1,58 @@
+{
+  "graphs": [
+    {
+      "O": 3.0,
+      "vtcm_mb": 16,
+      "graph_names": [
+        "ar128-cl2048_1_of_1"
+      ],
+      "num_cores": 4,
+      "fp16_relaxed_precision": 0
+    },{
+      "O": 3.0,
+      "vtcm_mb": 16,
+      "graph_names": [
+        "ar1-cl2048_1_of_1"
+      ],
+      "num_cores": 4,
+      "fp16_relaxed_precision": 0
+    }
+  ],
+  "context": {
+    "extended_udma": true,
+    "io_memory_estimation": false,
+    "weight_sharing_enabled": true
+  },
+  "devices": [
+    {
+      "soc_id": 72,
+      "dsp_arch": "v81",
+      "soc_model": 72,
+      "device_id": 0,
+      "core_type": 0,
+      "cores": [
+        {
+          "core_id": 0,
+          "perf_profile": "burst",
+          "rpc_control_latency": 100
+        }, {
+          "core_id": 1,
+          "perf_profile": "burst",
+          "rpc_control_latency": 100
+        }, {
+          "core_id": 2,
+          "perf_profile": "burst",
+          "rpc_control_latency": 100
+        }, {
+          "core_id": 3,
+          "perf_profile": "burst",
+          "rpc_control_latency": 100
+        }
+      ],
+      "pd_session": "unsigned"
+    }
+  ],
+  "memory": {
+    "mem_type": "shared_buffer"
+  }
+}

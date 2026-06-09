@@ -1,0 +1,7 @@
+{
+    "model_name": "ss-llama-mha-kv",
+    "model_or_path": "mha2sha-test-models/ss-llama-mha-kv/onnx/qc-hf-llama-1b-samsung.onnx",
+    "exported_model_encoding_path": "mha2sha-test-models/ss-llama-mha-kv/onnx/qc-hf-llama-1b-samsung.encodings",
+    "base_llm": "llama2",
+    "log_level": "info"
+}

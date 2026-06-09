@@ -1,0 +1,7 @@
+{
+    "model_name": "llama-bertcache",
+    "model_or_path": "mha2sha-test-models/llamav2_bertcache/onnx/llamav2_bertcache.onnx",
+    "exported_model_encoding_path": "mha2sha-test-models/llamav2_bertcache/onnx/llamav2_bertcache.encodings",
+    "base_llm": "llama2",
+    "log_level": "info"
+}

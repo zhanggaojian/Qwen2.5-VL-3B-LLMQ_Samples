@@ -1,1 +1,5 @@
-# Qwen2.5-VL-3B-LLMQ_SAMPLES
+
+# 环境
+参考[README.md](example1/README.md)
+
+# 量化
