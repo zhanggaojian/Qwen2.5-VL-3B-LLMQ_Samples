@@ -1,37 +1,11 @@
 import sys
 import os
-from pathlib import Path
 
-import yaml
-
-
-def load_yaml_config(config_path):
-    with open(config_path, "r", encoding="utf-8") as f:
-        config = yaml.safe_load(f) or {}
-
-    required_keys = (
-        "QNN_SDK_ROOT",
-        "model_name",
-        "model_id",
-        "cache_dir",
-        "output_dir",
-        "calibration_dataset_path",
-        "ppl_evaluation_dataset_path",
-    )
-    missing_keys = [key for key in required_keys if key not in config]
-    if missing_keys:
-        raise KeyError(f"Missing required config keys in {config_path}: {', '.join(missing_keys)}")
-
-    return config
-
-
-config_path = Path(__file__).resolve().parent / "config" / "llm_quant.yaml"
-config = load_yaml_config(config_path)
-QNN_SDK_ROOT = config["QNN_SDK_ROOT"]
-model_name = config["model_name"]
-model_id = config["model_id"]
-cache_dir = config["cache_dir"]
-output_dir = config["output_dir"]
+QNN_SDK_ROOT = '/data/leozhen/qairt/qaisw-v2.36.0.25-auto-qnx'
+model_name = 'qwen25llm'
+model_id = '/data/huggingface/hf_model/Qwen_Qwen2.5-VL-3B-Instruct'
+cache_dir = '/data/leozhen/quant_experiments/Qwen253bos/cache'
+output_dir = f'/data/leozhen/quant_experiments/Qwen253bos'
 
 
 lib_clang_path = os.path.join(QNN_SDK_ROOT, 'lib', 'x86_64-linux-clang')
@@ -47,7 +21,6 @@ htp_config_file = 'htp_v73'
 # SA8797  htp_v81
 
 from huggingface.baseline_models.qwen2 import modeling_qwen2
-from huggingface.baseline_models.qwen2.configuration_qwen2 import Qwen2Config
 from transformers import cache_utils
 from llm_utils.qcqwen2_adaptation import (
     QcAttention,
@@ -79,9 +52,9 @@ from tqdm import tqdm
 import torch
 os.makedirs(output_dir, exist_ok=True)
 
-from transformers import AutoTokenizer
+from transformers import AutoConfig, AutoTokenizer
 
-llm_config = Qwen2Config.from_pretrained(model_id, cache_dir=cache_dir)
+llm_config = AutoConfig.from_pretrained(model_id, cache_dir=cache_dir, trust_remote_code=True)
 context_length = 2048
 print(f'num_layer: {llm_config.num_hidden_layers}, context_length : {context_length},'
       f'num_hidden_size :{llm_config.num_attention_heads},  num_kv_heads: {llm_config.num_key_value_heads}')
@@ -230,8 +203,8 @@ else:
         "emb_length": ARN,
         "device": 'cuda',
         "qwen2vl_model_path": model_id,
-        "calibration_dataset_path": config["calibration_dataset_path"],
-        "ppl_evaluation_dataset_path": config["ppl_evaluation_dataset_path"],
+        "calibration_dataset_path": '/data/huggingface/hf_dataset/llava_v1_5_mix665k.json',
+        "ppl_evaluation_dataset_path": '/data/huggingface/hf_dataset/llava_v1_5_mix665k.json',
         "image_dataset_path": '/data/huggingface/hf_dataset',
         "R1_path": None,
         "use_mrope": llm_config.use_mrope
