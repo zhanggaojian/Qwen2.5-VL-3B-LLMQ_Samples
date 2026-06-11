@@ -158,22 +158,23 @@ class PreprocessSplit:
         return dataset
 
 
-def get_wiki_dataset(block_size, tokenizer, cache_dir):
+def get_wiki_dataset(block_size, tokenizer, cache_dir, dataset_path='wikitext', dataset_name='wikitext-2-raw-v1',
+                     train_split='train', test_split='test', batch_size=1, shuffle=False):
     dataset = {}
-    dataset['train'] = load_dataset(path='wikitext',
-                                    name='wikitext-2-raw-v1',
+    dataset['train'] = load_dataset(path=dataset_path,
+                                    name=dataset_name,
                                     cache_dir=cache_dir,
-                                    split='train')
+                                    split=train_split)
     dataset['train'] = PreprocessSplit(tokenizer, block_size).preprocess(dataset['train'])
 
-    dataset['test'] = load_dataset(path='wikitext',
-                                   name='wikitext-2-raw-v1',
+    dataset['test'] = load_dataset(path=dataset_path,
+                                   name=dataset_name,
                                    cache_dir=cache_dir,
-                                   split='test')
+                                   split=test_split)
     dataset['test'] = PreprocessGptqSplit(tokenizer, block_size).preprocess(dataset['test'])
 
-    train_dataloader = DataLoader(dataset['train'], shuffle=False, batch_size=1, collate_fn=default_data_collator)
-    test_dataloader = DataLoader(dataset['test'], shuffle=False, batch_size=1, collate_fn=default_data_collator)
+    train_dataloader = DataLoader(dataset['train'], shuffle=shuffle, batch_size=batch_size, collate_fn=default_data_collator)
+    test_dataloader = DataLoader(dataset['test'], shuffle=shuffle, batch_size=batch_size, collate_fn=default_data_collator)
 
     return train_dataloader, test_dataloader, dataset
 
