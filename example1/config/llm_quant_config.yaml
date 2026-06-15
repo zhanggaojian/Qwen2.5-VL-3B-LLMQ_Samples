@@ -1,14 +1,15 @@
 environment:
-  qnn_sdk_root: /data/leozhen/qairt/qaisw-v2.36.0.25-auto-qnx
+  qnn_sdk_root: /root/autodl-tmp/zgj/tools/qairt/2.42.0.251225
   compute_device: cuda
   cpu_device: cpu
+  omp_num_threads: 1
   tokenizers_parallelism: "0"
 
 model:
   name: qwen25llm
-  model_id: /data/huggingface/hf_model/Qwen_Qwen2.5-VL-3B-Instruct
-  cache_dir: /data/leozhen/quant_experiments/Qwen253bos/cache
-  output_dir: /data/leozhen/quant_experiments/Qwen253bos
+  model_id: /root/autodl-tmp/zgj/Qwen25/models/Qwen2.5-VL-3B-Instruct
+  cache_dir: /root/autodl-tmp/zgj/Qwen25/outputs/cache
+  output_dir: /root/autodl-tmp/zgj/Qwen25/outputs/output
   context_length: 2048
   arn: 1073
   enable_fp16: false
@@ -43,9 +44,9 @@ dataset:
     emb_length: null
     device: null
     qwen2vl_model_path: null
-    calibration_dataset_path: /data/huggingface/hf_dataset/llava_v1_5_mix665k.json
-    ppl_evaluation_dataset_path: /data/huggingface/hf_dataset/llava_v1_5_mix665k.json
-    image_dataset_path: /data/huggingface/hf_dataset
+    calibration_dataset_path: /root/autodl-tmp/zgj/data/llava_v1_5_mix665k.json
+    ppl_evaluation_dataset_path: /root/autodl-tmp/zgj/data/llava_v1_5_mix665k.json
+    image_dataset_path: /root/autodl-tmp/zgj/data
     default_image_path: coco/train2017/000000000025.jpg
     R1_path: null
     num_test_batches: 100

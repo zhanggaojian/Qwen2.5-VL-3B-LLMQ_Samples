@@ -1,0 +1,73 @@
+# ============================================================
+# Qwen2.5-VL-3B LLM 量化配置文件
+# llm_quant.py 从本文件读取所有可调配置，逻辑代码保持不变
+# ============================================================
+
+# 环境与路径
+environment:
+  qnn_sdk_root: /root/autodl-tmp/zgj/tools/qairt/2.42.0.251225
+  model_name: qwen25llm
+  model_id: /root/autodl-tmp/zgj/Qwen25/models/Qwen2.5-VL-3B-Instruct
+  cache_dir: /root/autodl-tmp/zgj/Qwen25/outputs/cache
+  output_dir: /root/autodl-tmp/zgj/Qwen25/outputs/output
+
+# 量化基础配置
+quantization:
+  enable_fp16: false
+  # 8gen3 -> htp_v73 ; SA8295P -> htp_v68 ; SA8797 -> htp_v81
+  htp_config_file: htp_v73
+  context_length: 2048
+  arn: 1073
+  quant_scheme: post_training_tf
+  default_output_bw: 16
+  default_param_bw: 4
+  skip_prepare: true
+  mixed_precision_config_file: ./config/mixed_precision_config/exceptions.json
+
+# 模型配置覆盖（对应 llm_config 的 setattr）
+model_overrides:
+  return_new_key_value_only: true
+  transposed_key_cache: true
+  use_combined_mask_input: true
+  use_position_embedding_input: true
+  use_cache: true
+  attn_implementation: eager
+  pretraining_tp: 1
+  use_input_embeddings: true
+  use_mrope: false
+  mask_neg_fp16: -50
+  mask_neg_fp32: -100
+
+# 校准/评估数据集
+dataset:
+  img_h: 672
+  img_w: 336
+  device: cuda
+  calibration_dataset_path: /root/autodl-tmp/zgj/data/llava_v1_5_mix665k.json
+  ppl_evaluation_dataset_path: /root/autodl-tmp/zgj/data/llava_v1_5_mix665k.json
+  image_dataset_path: /root/autodl-tmp/zgj/data
+  r1_path: null
+  num_test_batches: 100
+
+# SeqMSE 参数
+seq_mse:
+  num_batches: 20
+  inp_symmetry: symqt
+  num_candidates: 20
+  loss_fn: mse
+
+# 评估与编码计算
+evaluation:
+  ppl_num_batches: 10
+  compute_encodings_num_batches: 20
+
+# ONNX 导出
+export:
+  prepare_opset_version: 20
+  onnx_opset_version: 14
+
+# 生成测试向量的层（正则）
+test_vector_layers:
+  - "model_layers_\\d+_input_layernorm_Pow"
+  - "model_layers_\\d+_Add_1"
+  - "rms_norm_\\d+"

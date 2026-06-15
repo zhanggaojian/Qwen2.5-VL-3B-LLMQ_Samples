@@ -1,37 +1,35 @@
 import sys
 import os
+import yaml
 
-from llm_utils.config_io import get_required_section, load_yaml_config
+# ————————————————读取 YAML 配置————————————————
+_CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.yaml')
+with open(_CONFIG_PATH, 'r', encoding='utf-8') as _f:
+    CONFIG = yaml.safe_load(_f)
 
-quant_config = load_yaml_config(os.environ.get("LLM_QUANT_CONFIG") or None)
-environment_config = get_required_section(quant_config, "environment")
-model_config = get_required_section(quant_config, "model")
-dataset_config = get_required_section(quant_config, "dataset")
-evaluation_config = get_required_section(quant_config, "evaluation")
-prepare_config = get_required_section(quant_config, "prepare")
-quantization_config = get_required_section(quant_config, "quantization")
-seq_mse_config = get_required_section(quant_config, "seq_mse")
-encoding_config = get_required_section(quant_config, "encoding")
-test_vectors_config = get_required_section(quant_config, "test_vectors")
-export_config = get_required_section(quant_config, "export")
+_env = CONFIG['environment']
+_quant = CONFIG['quantization']
+_overrides = CONFIG['model_overrides']
+_dataset_cfg = CONFIG['dataset']
+_seq_mse_cfg = CONFIG['seq_mse']
+_eval_cfg = CONFIG['evaluation']
+_export_cfg = CONFIG['export']
 
-QNN_SDK_ROOT = environment_config["qnn_sdk_root"]
-compute_device = environment_config.get("compute_device", "cuda")
-cpu_device = environment_config.get("cpu_device", "cpu")
-model_name = model_config["name"]
-model_id = model_config["model_id"]
-cache_dir = model_config["cache_dir"]
-output_dir = model_config["output_dir"]
+QNN_SDK_ROOT = _env['qnn_sdk_root']
+model_name = _env['model_name']
+model_id = _env['model_id']
+cache_dir = _env['cache_dir']
+output_dir = _env['output_dir']
 
 
 lib_clang_path = os.path.join(QNN_SDK_ROOT, 'lib', 'x86_64-linux-clang')
 sys.path.insert(0, QNN_SDK_ROOT + '/lib/python')
 LD_LIBRARY_PATH = os.getenv('LD_LIBRARY_PATH', None)
 os.environ['LD_LIBRARY_PATH'] = lib_clang_path + ':' + LD_LIBRARY_PATH if LD_LIBRARY_PATH is not None else lib_clang_path
-enable_fp16 = model_config.get("enable_fp16", False)
-sys.path.append('../')
+enable_fp16 = _quant['enable_fp16']
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
-htp_config_file = quantization_config["htp_config_file"]
+htp_config_file = _quant['htp_config_file']
 # 8gen3  htp_v73
 # SA8295P htp_v68
 # SA8797  htp_v81
@@ -62,30 +60,35 @@ assert update_attr(cache_utils.DynamicCache, 'update',
 assert update_attr(cache_utils.DynamicCache, 'get_seq_length',
                    DynamicCache_get_seq_length), f"Unknown DynamicCache definition: {cache_utils.DynamicCache}"
 
+
+import sys, os
 from tqdm import tqdm
 import torch
 os.makedirs(output_dir, exist_ok=True)
 
 from transformers import AutoConfig, AutoTokenizer
 
-trust_remote_code = model_config.get("trust_remote_code", True)
-llm_config = AutoConfig.from_pretrained(model_id, cache_dir=cache_dir, trust_remote_code=trust_remote_code)
-context_length = model_config["context_length"]
+llm_config = AutoConfig.from_pretrained(model_id, cache_dir=cache_dir, trust_remote_code=True)
+context_length = _quant['context_length']
 print(f'num_layer: {llm_config.num_hidden_layers}, context_length : {context_length},'
       f'num_hidden_size :{llm_config.num_attention_heads},  num_kv_heads: {llm_config.num_key_value_heads}')
 
-ARN = model_config["arn"]
+ARN = _quant['arn']
 
-for attr_name, attr_value in model_config.get("config_overrides", {}).items():
-    setattr(llm_config, attr_name, attr_value)
-mask_neg_config = model_config.get("mask_neg", {})
-setattr(llm_config, 'mask_neg', mask_neg_config.get("fp16" if enable_fp16 else "fp32", -50 if enable_fp16 else -100))
+setattr(llm_config, 'return_new_key_value_only', _overrides['return_new_key_value_only'])
+setattr(llm_config, 'transposed_key_cache', _overrides['transposed_key_cache'])
+setattr(llm_config, 'use_combined_mask_input', _overrides['use_combined_mask_input'])
+setattr(llm_config, 'use_position_embedding_input', _overrides['use_position_embedding_input'])
+setattr(llm_config, "use_cache", _overrides['use_cache'])
+setattr(llm_config, '_attn_implementation', _overrides['attn_implementation'])
+setattr(llm_config, '_attn_implementation_internal', _overrides['attn_implementation'])
+setattr(llm_config, 'mask_neg', _overrides['mask_neg_fp16'] if enable_fp16 else _overrides['mask_neg_fp32'])
+setattr(llm_config, 'pretraining_tp', _overrides['pretraining_tp'])
+setattr(llm_config, 'use_input_embeddings', _overrides['use_input_embeddings'])
+setattr(llm_config, 'use_mrope', _overrides['use_mrope'])
 
-os.environ['TOKENIZERS_PARALLELISM'] = str(environment_config.get("tokenizers_parallelism", "0"))
-tokenizer = AutoTokenizer.from_pretrained(model_id,
-                                          cache_dir=cache_dir,
-                                          use_fast=model_config.get("tokenizer_use_fast", True),
-                                          trust_remote_code=trust_remote_code)
+os.environ['TOKENIZERS_PARALLELISM'] = '0'
+tokenizer = AutoTokenizer.from_pretrained(model_id, cache_dir=cache_dir, use_fast=True, trust_remote_code=True)
 tokenizer.model_max_length = context_length
 
 model = modeling_qwen2.Qwen2ForCausalLM.from_pretrained(model_id, config=llm_config)
@@ -204,38 +207,23 @@ def ppl_eval_embedding(data_loader, forward_pass_manager, num_batches=10):
 if not llm_config.use_input_embeddings:
     from llm_utils.wikitext_dataloader import get_wiki_dataset
 
-    wiki_dataset_config = get_required_section(dataset_config, "wiki")
-    train_dataloader, test_dataloader, _ = get_wiki_dataset(context_length,
-                                                            tokenizer,
-                                                            cache_dir,
-                                                            dataset_path=wiki_dataset_config.get("path", "wikitext"),
-                                                            dataset_name=wiki_dataset_config.get("name", "wikitext-2-raw-v1"),
-                                                            train_split=wiki_dataset_config.get("train_split", "train"),
-                                                            test_split=wiki_dataset_config.get("test_split", "test"),
-                                                            batch_size=wiki_dataset_config.get("batch_size", 1),
-                                                            shuffle=wiki_dataset_config.get("shuffle", False))
+    train_dataloader, test_dataloader, _ = get_wiki_dataset(context_length, tokenizer, cache_dir)
 else:
     from llm_utils.qwen2_5_vl_dataloader import get_qwen_dataset
 
-    vl_dataset_config = get_required_section(dataset_config, "vl")
     llava_dataset_setting = {
-        "img_h": vl_dataset_config["img_h"],
-        "img_w": vl_dataset_config["img_w"],
-        "emb_length": vl_dataset_config.get("emb_length") or ARN,
-        "device": vl_dataset_config.get("device") or compute_device,
-        "qwen2vl_model_path": vl_dataset_config.get("qwen2vl_model_path") or model_id,
-        "calibration_dataset_path": vl_dataset_config["calibration_dataset_path"],
-        "ppl_evaluation_dataset_path": vl_dataset_config["ppl_evaluation_dataset_path"],
-        "image_dataset_path": vl_dataset_config["image_dataset_path"],
-        "default_image_path": vl_dataset_config.get("default_image_path", "coco/train2017/000000000025.jpg"),
-        "R1_path": vl_dataset_config.get("R1_path"),
-        "batch_size": vl_dataset_config.get("batch_size", 1),
-        "shuffle": vl_dataset_config.get("shuffle", False),
+        "img_h": _dataset_cfg['img_h'],
+        "img_w": _dataset_cfg['img_w'],
+        "emb_length": ARN,
+        "device": _dataset_cfg['device'],
+        "qwen2vl_model_path": model_id,
+        "calibration_dataset_path": _dataset_cfg['calibration_dataset_path'],
+        "ppl_evaluation_dataset_path": _dataset_cfg['ppl_evaluation_dataset_path'],
+        "image_dataset_path": _dataset_cfg['image_dataset_path'],
+        "R1_path": _dataset_cfg['r1_path'],
         "use_mrope": llm_config.use_mrope
     }
-    train_dataloader, test_dataloader, dataset = get_qwen_dataset(model.model,
-                                                                  llava_dataset_setting,
-                                                                  num_test_batches=vl_dataset_config.get("num_test_batches", 100))
+    train_dataloader, test_dataloader, dataset = get_qwen_dataset(model.model, llava_dataset_setting, num_test_batches=_dataset_cfg['num_test_batches'])
 
 from llm_utils.forward_pass_wrapper import LLMForwardPassManager
 
@@ -248,8 +236,8 @@ orig_fpm = LLMForwardPassManager(cfg=llm_config,
 if not llm_config.use_input_embeddings:
     ppl_eval_embedding = ppl_eval
 with torch.no_grad():
-    with orig_fpm.place_on_device(compute_device):
-        orig_ppl = ppl_eval_embedding(test_dataloader, orig_fpm, num_batches=evaluation_config.get("original_ppl_batches", 10))
+    with orig_fpm.place_on_device("cuda"):
+        orig_ppl = ppl_eval_embedding(test_dataloader, orig_fpm, num_batches=_eval_cfg['ppl_num_batches'])
 
 print(f"ppl score of original fp model: {orig_ppl}")
 
@@ -275,7 +263,7 @@ def get_dummy_data(config, tokenizer, device, separate_tuple_input_output, num_t
         past_kv_length = max_tokens - num_tokens
         attention_mask = prepare_combined_attention_mask(attention_mask, input_shape=(1, num_tokens),
                                                          past_key_values_length=past_kv_length, device=device,
-                                                         mask_neg=config.mask_neg, dtype=dtype)
+                                                         mask_neg=-100, dtype=dtype)
 
     if config.use_position_embedding_input:
         position_ids = get_position_embeddings_from_position_ids(position_ids,
@@ -334,10 +322,10 @@ import time
 from utilities.aimet_patch import load_pytorch_model
 from aimet_torch import onnx_utils
 
-onnx_utils.EXPORT_TO_ONNX_DIRECT = prepare_config.get("export_to_onnx_direct", True)
+onnx_utils.EXPORT_TO_ONNX_DIRECT = True
 import qti.aisw.emitter.ir_graph_op_handler as ir_graph_op_handler
 
-ir_graph_op_handler.KEEP_ORIGINAL_MODEL_STRUCTURE = prepare_config.get("keep_original_model_structure", False)
+ir_graph_op_handler.KEEP_ORIGINAL_MODEL_STRUCTURE = False
 from qti.aisw.preparer_api import model_preparer
 
 
@@ -349,7 +337,7 @@ def _get_past_key_values_names(sfx, n_layers):
     return all_kvs
 
 
-dummy_input = get_dummy_data(llm_config, tokenizer, cpu_device, separate_tuple_input_output=False, num_tokens=ARN, dtype=model.dtype)
+dummy_input = get_dummy_data(llm_config, tokenizer, 'cpu', separate_tuple_input_output=False, num_tokens=ARN, dtype=model.dtype)
 if not llm_config.use_input_embeddings:
     input_names = ['input_ids', 'attention_mask']
     input_names += ['position_ids_cos', 'position_ids_sin'] if llm_config.use_position_embedding_input else ['position_ids']
@@ -363,15 +351,26 @@ else:
 
 # Build converter args
 converter_args = []
-converter_args_value = prepare_config.get("converter_args_value", "NONTRIVIAL")
+converter_args_value = 'NONTRIVIAL'
 for input_name in input_names:
     converter_args.append({"name": input_name, "source_model_input_layout": converter_args_value})
 converter_args = {"input_tensors": converter_args}
 
-skip_prepare = prepare_config.get("skip_prepare", True)
+skip_prepare = _quant['skip_prepare']
 prepare_path = f"{output_dir}/prepare"
 os.makedirs(prepare_path, exist_ok=True)
 prepare_filename = f'{model_name}_kvcache_{llm_config.num_hidden_layers}_layer'
+
+# 3B 模型 >2GB，torch.onnx 的内存内 shape 推断会把整图序列化、触发 protobuf 2GiB 限制。
+# torch.onnx.export 启动时会用参数默认值把 GLOBALS.onnx_shape_inference 重置回 True，
+# 因此直接把底层两个 C 形状推断 pass 替换为空操作，彻底跳过 (pytorch#146591)。
+# 放在此处无条件执行，使 prepare 导出和最终 quantsim.export 都生效（含 skip_prepare=true 路径）。
+import torch.onnx
+torch.onnx._globals.GLOBALS.onnx_shape_inference = False
+for _pass_name in ('_jit_pass_onnx_node_shape_type_inference',
+                   '_jit_pass_onnx_graph_shape_type_inference'):
+    if hasattr(torch._C, _pass_name):
+        setattr(torch._C, _pass_name, (lambda *a, **k: None))
 
 if skip_prepare:
     prepared_model_path = os.path.join(prepare_path, f'{prepare_filename}.py')
@@ -387,6 +386,13 @@ else:
     if enable_fp16:
         convert_model_to_fp32(model)
     model.num_logits_to_return = ARN  # configuring the model for KVCache mode
+    # ONNX 导出(jit tracing)无法对 transformers 的 ModelOutput 做整数索引，
+    # 让模型在导出时返回 tuple，规避 `outputs[0]` 的 KeyError
+    setattr(llm_config, 'return_dict', False)
+    model.config.return_dict = False
+    # 导出 tracing 时权重不能带梯度，否则报 "Cannot insert a Tensor that requires grad as a constant"
+    model.eval()
+    model.requires_grad_(False)
     prepared_model = model_preparer.prepare_model(model,
                                                   dummy_input,
                                                   model_name=prepare_filename,
@@ -394,10 +400,10 @@ else:
                                                   path=prepare_path,
                                                   input_names=input_names,
                                                   output_names=output_names,
-                                                  onnx_export_args={"opset_version": prepare_config.get("onnx_export_opset", 20)},
+                                                  onnx_export_args={"opset_version": _export_cfg['prepare_opset_version']},
                                                   # converter_args=converter_args,
                                                   return_prepare_model=True,
-                                                  keep_original_model_structure=prepare_config.get("keep_original_model_structure", False))
+                                                  keep_original_model_structure=False)
 print("————Prepare done————")
 del model
 
@@ -412,10 +418,8 @@ fp_prepared_fpm = LLMForwardPassManager(cfg=llm_config,
                                         num_tokens=ARN)
 
 with torch.no_grad():
-    with fp_prepared_fpm.place_on_device(compute_device):
-        prepared_kvcache_ppl = ppl_eval_embedding(test_dataloader,
-                                                  fp_prepared_fpm,
-                                                  num_batches=evaluation_config.get("prepared_ppl_batches", 10))
+    with fp_prepared_fpm.place_on_device("cuda"):
+        prepared_kvcache_ppl = ppl_eval_embedding(test_dataloader, fp_prepared_fpm)
 
 # This should be very close (<1e-4 delta) to original model's perplexity
 # If the perplexity score goes further up, it indicates the AIMET/QNN pair is producing a faulty prepared model
@@ -437,17 +441,17 @@ sim_fpm = LLMForwardPassManager(cfg=llm_config,
                                 num_tokens=ARN)
 
 dummy_input = get_dummy_data(llm_config,
-                             tokenizer, compute_device, separate_tuple_input_output=True,
+                             tokenizer, 'cuda', separate_tuple_input_output=True,
                              num_tokens=ARN, dtype=sim_fpm.dtype)
 
-with sim_fpm.place_on_device(compute_device):
+with sim_fpm.place_on_device("cuda"):
     quantsim = QuantizationSimModel(model=sim_fpm.model,
-                                    quant_scheme=getattr(QuantScheme, quantization_config.get("quant_scheme", "post_training_tf")),
+                                    quant_scheme=getattr(QuantScheme, _quant['quant_scheme']),
                                     dummy_input=dummy_input,
-                                    default_output_bw=quantization_config.get("default_output_bw", 16),
-                                    default_param_bw=quantization_config.get("default_param_bw", 4),
+                                    default_output_bw=_quant['default_output_bw'],
+                                    default_param_bw=_quant['default_param_bw'],
                                     # default_param_bw=8,
-                                    in_place=quantization_config.get("in_place", True),
+                                    in_place=True,
                                     config_file=htp_config_file)
 
 # Setting 16bit x 8bit Matmul. To keep key and value tensors as 8 bits, reducing data I/O costs associated with KV-cache orchestration.
@@ -460,7 +464,10 @@ import aimet_torch.elementwise_ops as aimet_ops
 propagate_output_encodings(quantsim, aimet_ops.Concat)
 # Manual mixed precision config
 from llm_utils.mixed_precision_overrides import ManualQuantsimMixedPrecisionConfig
-quantsim_adjuster = ManualQuantsimMixedPrecisionConfig(mixed_precision_config_file=quantization_config.get("mixed_precision_config_file", "./config/mixed_precision_config/exceptions.json"))
+_mp_cfg_file = _quant['mixed_precision_config_file']
+if not os.path.isabs(_mp_cfg_file):
+    _mp_cfg_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), _mp_cfg_file)
+quantsim_adjuster = ManualQuantsimMixedPrecisionConfig(mixed_precision_config_file=_mp_cfg_file)
 quantsim_adjuster.apply_exceptions(quantsim)
 
 from aimet_torch.v2.seq_mse import apply_seq_mse
@@ -499,17 +506,17 @@ def _forward_fn(model, inputs):
 if not llm_config.use_input_embeddings:
     _forward_fn = _forward_fn_inputs_id
 
-params = SeqMseParams(num_batches=seq_mse_config.get("num_batches", 20),
-                      inp_symmetry=seq_mse_config.get("inp_symmetry", "symqt"),
-                      num_candidates=seq_mse_config.get("num_candidates", 20),
-                      loss_fn=seq_mse_config.get("loss_fn", "mse"),
+params = SeqMseParams(num_batches=_seq_mse_cfg['num_batches'],
+                      inp_symmetry=_seq_mse_cfg['inp_symmetry'],
+                      num_candidates=_seq_mse_cfg['num_candidates'],
+                      loss_fn=_seq_mse_cfg['loss_fn'],
                       forward_fn=_forward_fn)
 
 # fp_prepared_fpm.model.to(torch.half)
 # sim_fpm.model.to(torch.half)
 print(train_dataloader)
 
-with fp_prepared_fpm.place_on_device(compute_device), sim_fpm.place_on_device(compute_device):
+with fp_prepared_fpm.place_on_device("cuda"), sim_fpm.place_on_device("cuda"):
     apply_seq_mse(fp_prepared_fpm.model, quantsim, train_dataloader, params)
 
 del fp_prepared_fpm
@@ -546,18 +553,18 @@ if not llm_config.use_input_embeddings:
 kwargs = {
     'data_loader': train_dataloader,
     'fpm': sim_fpm,
-    'num_batches': encoding_config.get("num_batches", 20)
+    'num_batches': _eval_cfg['compute_encodings_num_batches']
 
 }
 
-with sim_fpm.place_on_device(compute_device):
+with sim_fpm.place_on_device("cuda"):
     quantsim.compute_encodings(_forward_fn, kwargs)
 
 # ————Eval KV Cache QuantSimModel————
 with torch.no_grad():
-    with sim_fpm.place_on_device(compute_device):
+    with sim_fpm.place_on_device("cuda"):
         # sim_ppl = ppl_eval(test_dataloader, sim_fpm,num_batches=2)
-        sim_ppl = ppl_eval_embedding(test_dataloader, sim_fpm, num_batches=evaluation_config.get("sim_ppl_batches", 10))
+        sim_ppl = ppl_eval_embedding(test_dataloader, sim_fpm, num_batches=_eval_cfg['ppl_num_batches'])
 
 print(f"ppl score of KVCACHE sim fp model: {sim_ppl}\n"
       f"orig ppl - kvcache sim ppl = {orig_ppl - sim_ppl}")
@@ -565,37 +572,25 @@ print(f"ppl score of KVCACHE sim fp model: {sim_ppl}\n"
 # ————————————Export static graph with quantization encodings——————————————
 # generate test tensor for inference on edge with QNN
 from llm_utils.test_vectors import generate_test_vectors
-test_vector_layers = test_vectors_config.get("layers", [
-    "model_layers_\\d+_input_layernorm_Pow",
-    "model_layers_\\d+_Add_1",
-    "rms_norm_\\d+"
-])
-with sim_fpm.place_on_device(compute_device):
+test_vector_layers = CONFIG['test_vector_layers']
+with sim_fpm.place_on_device("cuda"):
     # generate_test_vectors(quantsim, sim_fpm, train_dataloader, output_dir, num_batches=1, test_vector_layers=test_vector_layers, input_names=input_names)
-    generate_test_vectors(quantsim,
-                          sim_fpm,
-                          train_dataloader,
-                          output_dir,
-                          num_batches=test_vectors_config.get("num_batches", 1),
-                          test_vector_layers=test_vector_layers,
-                          input_names=input_names)
+    generate_test_vectors(quantsim, sim_fpm, train_dataloader, output_dir, num_batches=1, test_vector_layers=test_vector_layers, input_names=input_names)
     # use more inputs if we choose fp16 at downproj instead of w4fp16
     # generate_test_vectors(quantsim, sim_fpm, train_dataloader, output_dir, num_batches=20, test_vector_layers=test_vector_layers, input_names=input_names)
 # Export KVCache Model
-dummy_input = get_dummy_data(llm_config, tokenizer, compute_device, separate_tuple_input_output=True, num_tokens=ARN)
+dummy_input = get_dummy_data(llm_config, tokenizer, 'cuda', separate_tuple_input_output=True, num_tokens=ARN)
 
 from aimet_torch.utils import change_tensor_device_placement
 from aimet_torch.onnx_utils import OnnxExportApiArgs
 
-onnx_dir = os.path.join(output_dir, export_config.get("onnx_dir_name", "onnx"))
+onnx_dir = os.path.join(output_dir, 'onnx')
 os.makedirs(onnx_dir, exist_ok=True)
 
 if (enable_fp16):
     # Convert FP16 model back to FP32 for ONNX export
     convert_model_to_fp32(quantsim.model)
 
-onnx_api_args = OnnxExportApiArgs(input_names=input_names,
-                                  output_names=output_names,
-                                  opset_version=export_config.get("onnx_opset_version", 14))
-sample_inputs = change_tensor_device_placement(dummy_input, torch.device(cpu_device))
+onnx_api_args = OnnxExportApiArgs(input_names=input_names, output_names=output_names, opset_version=_export_cfg['onnx_opset_version'])
+sample_inputs = change_tensor_device_placement(dummy_input, torch.device('cpu'))
 quantsim.export(onnx_dir, model_name, sample_inputs, onnx_export_args=onnx_api_args)

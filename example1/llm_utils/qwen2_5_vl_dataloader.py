@@ -81,7 +81,7 @@ class VisualEmbeddingGenerator(torch.nn.Module):
 
 class QwenDataset(Dataset):
 
-    def __init__(self, model, visual, processor, dataset_path, json_file_path, emb_length, calibration, img_h, img_w, R1_path=None, num_test_batches=300, mrope_position:Qwen_MROPE_Index=None, default_image_path="coco/train2017/000000000025.jpg"):
+    def __init__(self, model, visual, processor, dataset_path, json_file_path, emb_length, calibration, img_h, img_w, R1_path=None, num_test_batches=300, mrope_position:Qwen_MROPE_Index=None):
         self.img_h = img_h
         self.img_w = img_w
         self.model = model
@@ -94,7 +94,6 @@ class QwenDataset(Dataset):
         self.json_file_path = json_file_path
         self.emb_length = emb_length
         self.mrope_position = mrope_position
-        self.default_image_path = default_image_path
         with open(json_file_path) as file:
             self.json_file = json.load(file)
         self.num_test_batches = num_test_batches
@@ -110,7 +109,7 @@ class QwenDataset(Dataset):
         batch = {}
         batch['query'] = json_data
         # Add 640 image here
-        batch['image_file'] = os.path.join(self.dataset_path, self.default_image_path)
+        batch['image_file'] = os.path.join(self.dataset_path, "coco/train2017/000000000025.jpg")
         if self.calibration:
             try:
                 batch['image_file'] = os.path.join(self.dataset_path, json_data['image'])
@@ -131,9 +130,9 @@ class QwenDataset(Dataset):
 
         # adapt to SpinQuant
         if self.R1_path is not None:
-            image_embeds = image_embeds.to(device=self.model.device, dtype=torch.float64)
+            image_embeds = image_embeds.to(device="cuda", dtype=torch.float64)
             image_embeds = image_embeds - image_embeds.mean(dim=-1, keepdim=True)
-            R1 = torch.load(self.R1_path)["R1"].to(self.model.device).to(torch.float64)
+            R1 = torch.load(self.R1_path)["R1"].cuda().to(torch.float64)
             image_embeds = torch.matmul(image_embeds, R1).to(dtype=torch.float32)
 
         image_mask = ((inputs['input_ids'] == self.model.config.image_token_id).unsqueeze(-1).expand_as(inputs_embeds).to(inputs_embeds.device))
@@ -204,9 +203,6 @@ def get_vl_dataset(llm_model, dataset_setting, num_test_batches, is_qwen):
     R1_path = dataset_setting["R1_path"]
     img_w, img_h = dataset_setting["img_w"], dataset_setting["img_h"]
     use_mrope = dataset_setting.get("use_mrope", False)
-    default_image_path = dataset_setting.get("default_image_path", "coco/train2017/000000000025.jpg")
-    batch_size = dataset_setting.get("batch_size", 1)
-    shuffle = dataset_setting.get("shuffle", False)
     Qwen2VLmodel = Qwen2_5_VLForConditionalGeneration.from_pretrained(qwen2vl_model_path, ignore_mismatched_sizes=True).to(device)
     
 
@@ -234,8 +230,7 @@ def get_vl_dataset(llm_model, dataset_setting, num_test_batches, is_qwen):
                                img_w=img_w,
                                R1_path=R1_path,
                                num_test_batches=num_test_batches,
-                               mrope_position=mrope_position,
-                               default_image_path=default_image_path)
+                               mrope_position=mrope_position)
 
     dataset_test = DatasetCls(llm_model,
                               veg,
@@ -248,16 +243,15 @@ def get_vl_dataset(llm_model, dataset_setting, num_test_batches, is_qwen):
                               img_w=img_w,
                               R1_path=R1_path,
                               num_test_batches=num_test_batches,
-                              mrope_position=mrope_position,
-                              default_image_path=default_image_path)
+                              mrope_position=mrope_position)
     dataset['train'] = dataset_train
     dataset['test'] = dataset_test
 
     def custom_collate_fn(batch):
         return batch
 
-    train_dataloader = DataLoader(dataset['train'], shuffle=shuffle, batch_size=batch_size, collate_fn=default_data_collator)
-    test_dataloader = DataLoader(dataset['test'], shuffle=shuffle, batch_size=batch_size, collate_fn=default_data_collator)
+    train_dataloader = DataLoader(dataset['train'], shuffle=False, batch_size=1, collate_fn=default_data_collator)
+    test_dataloader = DataLoader(dataset['test'], shuffle=False, batch_size=1, collate_fn=default_data_collator)
     del llm_model, veg, Qwen2VLmodel
     return train_dataloader, test_dataloader, dataset
 
