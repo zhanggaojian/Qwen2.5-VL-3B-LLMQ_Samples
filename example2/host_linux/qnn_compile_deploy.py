@@ -8,12 +8,12 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 import time
 from pathlib import Path
-go_parallel = True
+go_parallel = False
 
 workfolder = os.getcwd()
 
-LLAMA_MODELS = "/data/leozhen/quant_experiments/Qwen253bos"
-QNN_SDK_ROOT = "/opt/qcom/aistack/qairt/2.36.0.250627-auto-qnx"
+LLAMA_MODELS = "/root/autodl-tmp/zgj/Qwen25/outputs/output"
+QNN_SDK_ROOT = "/root/autodl-tmp/zgj/tools/qairt/2.42.0.251225"
 
 assert os.path.exists(QNN_SDK_ROOT) == True,"QNN_SDK_ROOT path does not exist"
 assert os.path.exists(LLAMA_MODELS) == True,"LLAMA_MODELS path does not exist"
@@ -27,6 +27,8 @@ from utilities.profiler import event_marker
 nsp_target = NspTargets.Android.GEN4
 
 CL = 2048 # 2048
+#ARNs = [1]  # 首次单 AR 验证；跑通后改回 [1, 128]
+#ARNs = [128]  # AR1 已完成并保留，本次只补跑 AR128
 ARNs = [1, 128]
 EXPORT_AR = 1073
 EXPORT_CONTEXT_LENGTH = 2048

@@ -63,6 +63,10 @@ def apply_fix(onnxmodel, base_dir, fix):
             changed[0] += 1
 
     def fix_tensor_proto_in_initializer(tensor_proto):
+        # 先用 proto 里的 dims 判断形状(不读取数据)，只有形状含待修正维度的张量才把数据读进内存，
+        # 避免对 3B 模型的全部大权重逐个 to_array 导致内存被撑爆(OOM/Killed)。
+        if not any(i in list(tensor_proto.dims) for i in fix.keys()):
+            return None
         tensor = numpy_helper.to_array(tensor_proto, base_dir=base_dir)
         if (tensor == 1).all() and any(i in list(tensor.shape) for i in fix.keys()):
             new_shape = [fix[i] if i in fix else i for i in tensor.shape]

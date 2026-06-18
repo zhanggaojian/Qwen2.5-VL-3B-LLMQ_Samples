@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1180" viewBox="0 0 1800 1180" role="img" aria-labelledby="title desc">
+  <title id="title">Qwen2.5-VL-3B example1 example2 example3 输入输出流程图</title>
+  <desc id="desc">整理 example1 量化、example2 QNN 编译、example3 端侧运行之间的输入、主要工作、输出和数据流关系。</desc>
+  <defs>
+    <style>
+      .bg { fill: #f7f8fb; }
+      .title { font: 700 42px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #172033; }
+      .subtitle { font: 400 20px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #5e6a7d; }
+      .stage-title { font: 700 28px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #ffffff; }
+      .stage-env { font: 500 17px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #eaf0ff; }
+      .section { font: 700 20px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #172033; }
+      .body { font: 400 17px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #253044; }
+      .small { font: 400 15px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #5e6a7d; }
+      .arrow-label { font: 700 16px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #334155; }
+      .card { fill: #ffffff; stroke: #d8dee9; stroke-width: 2; rx: 8; }
+      .stage { fill: #ffffff; stroke: #cbd5e1; stroke-width: 2; rx: 8; }
+      .line { stroke: #516179; stroke-width: 4; fill: none; marker-end: url(#arrow); }
+      .soft-line { stroke: #8792a6; stroke-width: 3; fill: none; marker-end: url(#arrowSoft); stroke-dasharray: 8 8; }
+      .pill { fill: #eef2f7; stroke: #d8dee9; stroke-width: 1.5; rx: 8; }
+      .input { fill: #ecfdf5; stroke: #a7f3d0; }
+      .work { fill: #eef6ff; stroke: #bfdbfe; }
+      .output { fill: #fff7ed; stroke: #fed7aa; }
+    </style>
+    <marker id="arrow" markerWidth="14" markerHeight="14" refX="12" refY="7" orient="auto" markerUnits="strokeWidth">
+      <path d="M 0 0 L 14 7 L 0 14 z" fill="#516179"/>
+    </marker>
+    <marker id="arrowSoft" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M 0 0 L 12 6 L 0 12 z" fill="#8792a6"/>
+    </marker>
+    <linearGradient id="g1" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#0891b2"/>
+    </linearGradient>
+    <linearGradient id="g2" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0%" stop-color="#0f766e"/>
+      <stop offset="100%" stop-color="#16a34a"/>
+    </linearGradient>
+    <linearGradient id="g3" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0%" stop-color="#b45309"/>
+      <stop offset="100%" stop-color="#dc2626"/>
+    </linearGradient>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1800" height="1180"/>
+
+  <text class="title" x="90" y="76">Qwen2.5-VL-3B 端侧部署三阶段：输入 / 工作 / 输出</text>
+  <text class="subtitle" x="92" y="116">整体关系：example1 量化 → example2 主机编译 → example3 高通设备端侧运行</text>
+
+  <rect class="card" x="90" y="150" width="1620" height="94"/>
+  <text class="section" x="122" y="188">前置输入</text>
+  <text class="body" x="122" y="219">
+    <tspan>原始 HF 模型 Qwen2.5-VL-3B-Instruct</tspan>
+    <tspan dx="38">校准/评估数据：LLaVA JSON + COCO 图像</tspan>
+    <tspan dx="38">QAIRT SDK / AIMET / PyTorch 环境</tspan>
+    <tspan dx="38">目标芯片 HTP 配置</tspan>
+  </text>
+
+  <!-- Example 1 -->
+  <rect class="stage" x="90" y="300" width="500" height="690"/>
+  <rect x="90" y="300" width="500" height="86" rx="8" fill="url(#g1)"/>
+  <text class="stage-title" x="122" y="338">example1：模型量化</text>
+  <text class="stage-env" x="122" y="367">运行位置：x86 Linux + CUDA GPU</text>
+
+  <rect class="pill input" x="122" y="420" width="436" height="126"/>
+  <text class="section" x="146" y="451">输入</text>
+  <text class="body" x="146" y="482">
+    <tspan x="146" dy="0">• 原始 HF 模型和 tokenizer</tspan>
+    <tspan x="146" dy="27">• 校准/评估图文数据集</tspan>
+    <tspan x="146" dy="27">• example1/config.yaml</tspan>
+  </text>
+
+  <rect class="pill work" x="122" y="575" width="436" height="216"/>
+  <text class="section" x="146" y="606">主要工作</text>
+  <text class="body" x="146" y="637">
+    <tspan x="146" dy="0">• QNN 友好化改造</tspan>
+    <tspan x="166" dy="25">QcAttention / KV-cache / Linear→Conv</tspan>
+    <tspan x="146" dy="31">• Prepare：Torch → ONNX → QNNIR</tspan>
+    <tspan x="146" dy="31">• QuantSim：W4A16，KV 相关 8bit</tspan>
+    <tspan x="146" dy="31">• SeqMSE + compute_encodings</tspan>
+    <tspan x="146" dy="31">• PPL 校验和 test vectors 生成</tspan>
+  </text>
+
+  <rect class="pill output" x="122" y="820" width="436" height="132"/>
+  <text class="section" x="146" y="851">输出</text>
+  <text class="body" x="146" y="882">
+    <tspan x="146" dy="0">• output/onnx/qwen25llm.onnx</tspan>
+    <tspan x="146" dy="27">• 所有 *.weight / *.bias 外置权重</tspan>
+    <tspan x="146" dy="27">• qwen25llm.encodings</tspan>
+  </text>
+
+  <!-- Example 2 -->
+  <rect class="stage" x="650" y="300" width="500" height="690"/>
+  <rect x="650" y="300" width="500" height="86" rx="8" fill="url(#g2)"/>
+  <text class="stage-title" x="682" y="338">example2：QNN 主机编译</text>
+  <text class="stage-env" x="682" y="367">运行位置：x86 Linux 主机，纯 CPU 工具链</text>
+
+  <rect class="pill input" x="682" y="420" width="436" height="126"/>
+  <text class="section" x="706" y="451">输入</text>
+  <text class="body" x="706" y="482">
+    <tspan x="706" dy="0">• example1 输出的 ONNX 三件套</tspan>
+    <tspan x="706" dy="27">• HTP backend / soc / dsp 配置</tspan>
+    <tspan x="706" dy="27">• split、MHA2SHA、QNN 编译脚本</tspan>
+  </text>
+
+  <rect class="pill work" x="682" y="575" width="436" height="216"/>
+  <text class="section" x="706" y="606">主要工作</text>
+  <text class="body" x="706" y="637">
+    <tspan x="706" dy="0">• 按 AR/context 配置模型输入形态</tspan>
+    <tspan x="706" dy="31">• split ONNX，生成分片资产</tspan>
+    <tspan x="706" dy="31">• MHA → SHA，适配 HTP</tspan>
+    <tspan x="706" dy="31">• qairt-converter：ONNX → DLC</tspan>
+    <tspan x="706" dy="31">• qairt-quantizer + context binary</tspan>
+  </text>
+
+  <rect class="pill output" x="682" y="820" width="436" height="132"/>
+  <text class="section" x="706" y="851">输出</text>
+  <text class="body" x="706" y="882">
+    <tspan x="706" dy="0">• 设备可执行 context binary</tspan>
+    <tspan x="706" dy="27">• 分片模型 / 输入向量 / golden 输出</tspan>
+    <tspan x="706" dy="27">• 可部署到高通设备的模型包</tspan>
+  </text>
+
+  <!-- Example 3 -->
+  <rect class="stage" x="1210" y="300" width="500" height="690"/>
+  <rect x="1210" y="300" width="500" height="86" rx="8" fill="url(#g3)"/>
+  <text class="stage-title" x="1242" y="338">example3：端侧运行</text>
+  <text class="stage-env" x="1242" y="367">运行位置：高通 SnapDragon 设备，NPU/HTP</text>
+
+  <rect class="pill input" x="1242" y="420" width="436" height="126"/>
+  <text class="section" x="1266" y="451">输入</text>
+  <text class="body" x="1266" y="482">
+    <tspan x="1266" dy="0">• example2 生成的 context binary</tspan>
+    <tspan x="1266" dy="27">• Genie / QNN runtime libraries</tspan>
+    <tspan x="1266" dy="27">• tokenizer、Genie JSON、input_embeds</tspan>
+  </text>
+
+  <rect class="pill work" x="1242" y="575" width="436" height="216"/>
+  <text class="section" x="1266" y="606">主要工作</text>
+  <text class="body" x="1266" y="637">
+    <tspan x="1266" dy="0">• 导出 embedding 表和测试输入</tspan>
+    <tspan x="1266" dy="31">• 准备 qwen25vl3B_os.json</tspan>
+    <tspan x="1266" dy="31">• 推送模型、配置、运行库到设备</tspan>
+    <tspan x="1266" dy="31">• 执行 genie-t2t-run</tspan>
+    <tspan x="1266" dy="31">• 在 HTP 上完成实际推理</tspan>
+  </text>
+
+  <rect class="pill output" x="1242" y="820" width="436" height="132"/>
+  <text class="section" x="1266" y="851">输出</text>
+  <text class="body" x="1266" y="882">
+    <tspan x="1266" dy="0">• 端侧文本推理结果</tspan>
+    <tspan x="1266" dy="27">• 运行日志、性能信息</tspan>
+    <tspan x="1266" dy="27">• 可用于比对的端侧输出</tspan>
+  </text>
+
+  <!-- Arrows -->
+  <path class="line" d="M 340 244 C 340 264 340 276 340 292"/>
+  <text class="arrow-label" x="254" y="278">模型 / 数据 / 环境</text>
+
+  <path class="line" d="M 590 642 L 642 642"/>
+  <text class="arrow-label" x="584" y="619">ONNX + 权重 + encodings</text>
+
+  <path class="line" d="M 1150 642 L 1202 642"/>
+  <text class="arrow-label" x="1152" y="619">context binary</text>
+
+  <rect class="card" x="90" y="1030" width="1620" height="88"/>
+  <text class="section" x="122" y="1066">最终目标</text>
+  <text class="body" x="122" y="1099">
+    <tspan>把训练侧 / 服务器侧的 Qwen2.5-VL-3B 模型，转成高通设备上可由 Genie + QNN/HTP 运行的端侧推理资产。</tspan>
+  </text>
+
+  <path class="soft-line" d="M 1460 952 C 1460 1010 880 1010 340 952"/>
+  <text class="small" x="710" y="1007">精度与数值闭环：PPL、test vectors、golden outputs 用于排查量化和端侧误差</text>
+</svg>

@@ -1,6 +1,6 @@
 {
     "backend_extensions": {
         "shared_library_path": "libQnnHtpNetRunExtensions.so",
-        "config_file_path": "/local/qwen2.5-VL-3B-os/example2/host_linux/htp_backend_ext_config.json"
+        "config_file_path": "/root/autodl-tmp/zgj/code/qwen25/example2/host_linux/htp_backend_ext_config.json"
     }
 }
