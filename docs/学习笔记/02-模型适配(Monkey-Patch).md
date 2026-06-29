@@ -69,6 +69,8 @@ def update_attr(cls, attr_name, new_attr):
 
 ### 1. QcAttention（注意力）— `qcqwen2_adaptation.py` 第 62-212 行
 
+> 📎 Attention 本身是什么、QKV/多头/RoPE/KVCache 怎么回事、官方源码逐段对照，见独立笔记：[02-附录A-Attention注意力机制.md](./02-附录A-Attention注意力机制.md)。
+
 继承官方 `Qwen2Attention`，主要改动：
 - **Linear → 1x1 Conv2d**：`prepare_conv()` 里新建 `q/k/v/o_proj_conv`，并把原 Linear 的权重 `[:, :, None, None]` 拷进去（升 2 维以适配 Conv），然后删掉原 Linear。
 - **量化感知加法**：`self.attn_add = Add()`（来自 `aimet_torch`），把 `attn_weights + attention_mask` 换成可被量化工具识别的算子。
@@ -78,17 +80,48 @@ def update_attr(cls, attr_name, new_attr):
 
 ### 2. bypass_update_causal_mask（因果掩码）— 第 215-217 行
 
+#### 背景：什么是因果掩码（Causal Mask）？
+
+因果掩码是 Transformer 在**文本生成类任务**中用的"遮挡规则"，作用是：**模型在预测某个位置时，只能看到它前面的词，看不到后面的词。**
+
+- **为什么需要**：语言模型是**自回归**的（一个词一个词往外蹦），预测第 5 个词时只能依据第 1-4 个词。但注意力机制天生是"全局"的——每个位置能同时看到所有位置。若训练时让它偷看到后面的"答案"，就学不会真正预测，等于作弊。因果掩码就是用来"挡住未来"。
+- **长什么样**：注意力会算出一个 `序列长度 × 序列长度` 的分数矩阵（第 i 行 = 第 i 个词对其他词的关注度）。因果掩码把**上三角（未来位置）置成负无穷**：
+
+```
+        词1    词2    词3    词4
+词1  [  0    -inf  -inf  -inf ]
+词2  [  0     0    -inf  -inf ]
+词3  [  0     0     0    -inf ]
+词4  [  0     0     0     0   ]
+```
+
+- `0`：允许关注（自己和前面的词）；`-inf`：禁止关注（后面的词）。
+- 这个矩阵**加到注意力分数上**再过 softmax，加了 `-inf` 的位置概率变成 0，相当于"看不见"。
+- 允许的部分正好是**下三角（含对角线）**，所以也叫"下三角掩码"。
+
+> **连回 config**：FP16 数值范围有限，不能真用 `-inf`，得用"足够小"的负数代替——这正是 `config.yaml` 里 `mask_neg_fp16: -50 / mask_neg_fp32: -100` 的来历。
+
+#### 这里的适配改动
+
 ```python
 def bypass_update_causal_mask(self, attention_mask, *args, **kwargs):
     return attention_mask   # 原样返回，不再动态生成
 ```
-官方会在 forward 里动态构造下三角因果掩码；端侧改成**掩码由模型输入直接喂进来**（对应 config 的 `use_combined_mask_input`），所以这里直接透传。
+官方会在 forward 里**动态构造**下三角因果掩码（`_update_causal_mask`）；端侧改成**掩码由模型输入直接喂进来**（对应 config 的 `use_combined_mask_input`），所以这里直接透传。
+
+> ⚠️ **别误解**：改的是掩码的"**来源**"（动态生成 → 外部输入），**不是"有没有掩码"**。原始模型有、训练时更必须有，这里只是换了供货渠道。
+
+> **为什么这么改**：端侧推理输入定长、掩码预先算好由外部喂入，比每次在模型里动态构造更高效，也更利于导出成固定计算图(ONNX)。
+>
+> 📎 三个概念（动态生成 / 端侧定长 / 固定计算图导出）+ "为什么端侧要定长" 详解见独立笔记：[02-附录E-端侧定长与计算图导出.md](./02-附录E-端侧定长与计算图导出.md)。
 
 ### 3. MLP / lm_head 转 Conv — 第 220-263 行
 
 `MLP_prepare_conv` / `MLP_forward_conv`：把 `gate/up/down_proj` 三个 Linear 换成 1x1 Conv2d；前向时 `reshape + transpose` 成 4D 喂给 Conv，算完再变回来。`ForCausalLM_prepare_conv` 同理处理最后的 `lm_head`。
 
 > 数学上 1x1 Conv 与 Linear 等价，但 HTP 硬件对 Conv 支持更好/更快。
+>
+> 📎 原理详解（Linear/Conv 是什么、为何等价、怎么搬权重）见独立笔记：[02-附录B-Linear与Conv算子转换.md](./02-附录B-Linear与Conv算子转换.md)（这块还在深入研究中）。
 
 ### 4. DynamicCache 改写（KV 缓存）— 第 266-303 行
 
