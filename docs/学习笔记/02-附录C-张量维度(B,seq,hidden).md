@@ -3,9 +3,11 @@
 > **关联**：这是看懂 [02-附录A-Attention注意力机制.md](./02-附录A-Attention注意力机制.md) 和 [02-附录B-Linear与Conv算子转换.md](./02-附录B-Linear与Conv算子转换.md) 里所有 `reshape / transpose / view` 的**地基**。
 > **一句话本质**：模型里流动的文本数据，最常见形状就是三维 `[B, seq, hidden]` —— **几个句子、每句几个词、每个词几维向量**。
 
+> **本篇是基础概念篇**（全笔记统一风格）：只分 **① 介绍 → ② 原理** 两段；张量维度是通用地基，**不涉及"官方 vs 本项目改造"的对比**。
+
 ---
 
-## 一、三个维度分别是什么
+## 一、介绍：`[B, seq, hidden]` 三个维度分别是什么
 
 | 维度 | 名称 | 通俗含义 | 在本项目 |
 |------|------|----------|----------|
@@ -23,14 +25,16 @@
 
 ---
 
-## 二、四个关键补充点
+## 二、原理
 
-### 1. batch 的作用 = 并行提速
+### 2.1 四个关键补充点
+
+#### 1. batch 的作用 = 并行提速
 把多个句子打包一起算，硬件能一次并行处理，比逐句算快得多。
 - **训练**：常用较大 batch。
 - **端侧推理**：往往 `batch_size=1`（一次处理一个请求）→ 这就是 `config.yaml` 里 `batch_size: 1` 的原因。
 
-### 2. seq / 词 / token 三者的关系（重点）
+#### 2. seq / 词 / token 三者的关系（重点）
 
 口语里我们常说"每个句子有 seq 个**词**"，但严格讲，**`seq` 数的是 token，不是"单词"**。三者关系：
 
@@ -59,7 +63,7 @@ token 序列  ← seq 数的就是这个：token 的个数
 - 之所以用 token 而非整词：词表(vocab)有限（约 15 万），用子词能用少量单元拼出任意词，还能处理没见过的新词。
 - 所以笔记里说"词"时，**心里要换成"token"** 才准确。`config.yaml` 的 `context_length: 2048` 指的也是**最多 2048 个 token**。
 
-### 3. embedding 向量怎么来的
+#### 3. embedding 向量怎么来的
 - 每个 token 先是一个整数 **id**。
 - 模型里有一张 **embedding 表**，形状 `[vocab_size, hidden]`。
 - 用 id 去查表 → 得到该 token 的 `hidden` 维向量。
@@ -67,15 +71,13 @@ token 序列  ← seq 数的就是这个：token 的个数
 
 > 本项目：`hidden = hidden_size`（约 2048），`vocab_size` = 词表大小（约 15 万）。
 
-### 4. 句子长度不一怎么办 → padding + mask
+#### 4. 句子长度不一怎么办 → padding + mask
 张量必须是规整的矩形，但真实句子长短不一：
 - **padding**：用占位 token 把短句补齐到统一长度。
 - **attention mask**：告诉模型"哪些是补出来的，别去关注"。
 - 这是 mask 的另一个用途（区别于"因果掩码"屏蔽未来，见笔记 02 第 2 节）。
 
----
-
-## 三、连回 Attention / Conv 笔记
+### 2.2 连回 Attention / Conv 笔记
 
 理解了 `[B, seq, hidden]`，前面那些形状变换就有了根：
 
@@ -86,7 +88,7 @@ token 序列  ← seq 数的就是这个：token 的个数
 
 ---
 
-## 四、记忆锚点
+## 三、记忆锚点
 
 - `[B, seq, hidden]` = 几个句子 / 每句几个 token / 每个 token 几维向量。
 - token ≠ 单词（是子词）；id 查 embedding 表得到向量。
@@ -94,7 +96,7 @@ token 序列  ← seq 数的就是这个：token 的个数
 
 ---
 
-## 五、待深入（自己往下填）
+## 四、待深入（自己往下填）
 
 - [ ] Qwen2.5-VL-3B 的 `hidden_size` / `num_heads` / `head_dim` / `vocab_size` 具体是多少？（去 model 的 config.json 查）
 - [ ] 多模态(VL)里图像是怎么变成 token 拼进 seq 的？

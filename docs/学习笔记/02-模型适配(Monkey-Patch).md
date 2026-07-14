@@ -2,10 +2,12 @@
 
 > **流程位置**：读完 `config.yaml` 之后、加载模型之前（`llm_quant.py` 第 50-61 行）。
 > **一句话本质**：在**不修改官方模型源码**的前提下，运行时把官方 Qwen2 的几个"零件"**替换成高通量化专用版本**。这种"运行时替换"叫 Monkey Patch（猴子补丁）。
+>
+> **本篇结构（四段式）**：一 介绍（为什么要适配、Monkey Patch 是什么）→ 二 原理（Monkey Patch 的替换机制）→ 三 官方做法（官方 Qwen2 原本各零件怎么做，基线一览）→ 四 本项目改造后的做法（逐行拆解 + 四个零件替换 + 与 config 的对应）。
 
 ---
 
-## 一、为什么需要适配？
+## 一、介绍：为什么需要适配？
 
 官方 `modeling_qwen2.py` 是为 **GPU 训练/推理** 写的。而本项目要把模型跑在**高通端侧 NPU(HTP)** 上并做量化，硬件有特殊偏好：
 
@@ -20,7 +22,7 @@
 
 ---
 
-## 二、核心机制：Monkey Patch 的两种手法
+## 二、原理：Monkey Patch 的替换机制（两种手法）
 
 ### 手法 A：直接赋值 / setattr 替换
 
@@ -51,7 +53,24 @@ def update_attr(cls, attr_name, new_attr):
 
 ---
 
-## 三、逐行拆解（第 50-61 行）
+## 三、官方做法：官方 Qwen2 原本各零件怎么做（基线一览）
+
+本项目一行没改官方源码，所以"官方做法"就是 `modeling_qwen2.py` 的原版实现——它面向 **GPU 训练/推理**。下面这张表是**被替换掉的四个零件在官方那边长什么样**，作为改造前的基线（每个零件的原理细节见对应附录）：
+
+| 零件 | 官方 Qwen2 原本做法 | 原理详解 |
+|------|--------------------|----------|
+| 注意力 | `Qwen2Attention`，q/k/v/o 用 `nn.Linear`，`attn_weights + mask` 用普通 `+` | [附录A](./02-附录A-Attention注意力机制.md) |
+| 因果掩码 | forward 里 **动态构造**下三角掩码（`_update_causal_mask`） | [附录E](./02-附录E-端侧定长与计算图导出.md) |
+| MLP / lm_head | `gate/up/down_proj`、`lm_head` 均为 `nn.Linear` | [附录B](./02-附录B-Linear与Conv算子转换.md) |
+| KV Cache | `DynamicCache.update` **动态追加**完整历史 K/V（不转置） | [附录K](./02-附录K-KV%20Cache(键值缓存).md) |
+
+> 记忆：官方做法都是"为 GPU 优化的通用实现"——Linear、动态掩码、动态累积 KV。端侧 NPU 偏好不同，于是有了第四节的四处改造。
+
+---
+
+## 四、本项目改造后的做法（逐行拆解 + 四个零件 + config 对应）
+
+### 4.1 逐行拆解（第 50-61 行）
 
 | 行 | 代码 | 替换了什么 | 作用 |
 |----|------|-----------|------|
@@ -65,9 +84,9 @@ def update_attr(cls, attr_name, new_attr):
 
 ---
 
-## 四、四个被替换的零件，原理说明
+### 4.2 四个被替换的零件，原理说明
 
-### 1. QcAttention（注意力）— `qcqwen2_adaptation.py` 第 62-212 行
+#### 4.2.1 QcAttention（注意力）— `qcqwen2_adaptation.py` 第 62-212 行
 
 > 📎 Attention 本身是什么、QKV/多头/RoPE/KVCache 怎么回事、官方源码逐段对照，见独立笔记：[02-附录A-Attention注意力机制.md](./02-附录A-Attention注意力机制.md)。
 
@@ -78,9 +97,9 @@ def update_attr(cls, attr_name, new_attr):
 - **支持外部 RoPE**：`position_ids` 若是 tuple，直接用传入的 cos/sin（`_apply_rope_single`），适配端侧导出。
 - **transposed_key_cache**：可把 K 转置后再算 `Q·K`，省掉一次 transpose。
 
-### 2. bypass_update_causal_mask（因果掩码）— 第 215-217 行
+#### 4.2.2 bypass_update_causal_mask（因果掩码）— 第 215-217 行
 
-#### 背景：什么是因果掩码（Causal Mask）？
+##### 背景：什么是因果掩码（Causal Mask）？
 
 因果掩码是 Transformer 在**文本生成类任务**中用的"遮挡规则"，作用是：**模型在预测某个位置时，只能看到它前面的词，看不到后面的词。**
 
@@ -101,7 +120,7 @@ def update_attr(cls, attr_name, new_attr):
 
 > **连回 config**：FP16 数值范围有限，不能真用 `-inf`，得用"足够小"的负数代替——这正是 `config.yaml` 里 `mask_neg_fp16: -50 / mask_neg_fp32: -100` 的来历。
 
-#### 这里的适配改动
+##### 这里的适配改动
 
 ```python
 def bypass_update_causal_mask(self, attention_mask, *args, **kwargs):
@@ -115,7 +134,7 @@ def bypass_update_causal_mask(self, attention_mask, *args, **kwargs):
 >
 > 📎 三个概念（动态生成 / 端侧定长 / 固定计算图导出）+ "为什么端侧要定长" 详解见独立笔记：[02-附录E-端侧定长与计算图导出.md](./02-附录E-端侧定长与计算图导出.md)。
 
-### 3. MLP / lm_head 转 Conv — 第 220-263 行
+#### 4.2.3 MLP / lm_head 转 Conv — 第 220-263 行
 
 `MLP_prepare_conv` / `MLP_forward_conv`：把 `gate/up/down_proj` 三个 Linear 换成 1x1 Conv2d；前向时 `reshape + transpose` 成 4D 喂给 Conv，算完再变回来。`ForCausalLM_prepare_conv` 同理处理最后的 `lm_head`。
 
@@ -123,7 +142,7 @@ def bypass_update_causal_mask(self, attention_mask, *args, **kwargs):
 >
 > 📎 原理详解（Linear/Conv 是什么、为何等价、怎么搬权重）见独立笔记：[02-附录B-Linear与Conv算子转换.md](./02-附录B-Linear与Conv算子转换.md)（这块还在深入研究中）。
 
-### 4. DynamicCache 改写（KV 缓存）— 第 266-303 行
+#### 4.2.4 DynamicCache 改写（KV 缓存）— 第 266-303 行
 
 - `return_new_key_value_only=True` 时，缓存里**只保留新算的 K/V**（端侧 KVCache 模式：历史 KV 由外部管理）。
 - `transposed_key_cache` 决定 K 在哪个维度拼接（`-1` vs `-2`）。
@@ -131,7 +150,7 @@ def bypass_update_causal_mask(self, attention_mask, *args, **kwargs):
 
 ---
 
-## 五、和 config.yaml 的对应关系
+### 4.3 和 config.yaml 的对应关系
 
 适配代码里读的这些开关，都来自 `config.yaml` 的 `model_overrides`（在第 80-88 行 setattr 到 `llm_config`）：
 
@@ -145,7 +164,7 @@ def bypass_update_causal_mask(self, attention_mask, *args, **kwargs):
 
 ---
 
-## 六、怎么"学"这一段（方法建议）
+## 五、怎么"学"这一段（方法建议）
 
 1. **先记住本质**：这就是"运行时换零件"，原版不动。不用通读 1552 行官方文件。
 2. **建立 4 大块概念**：Attention / MLP / Causal Mask / KV Cache 各是干嘛的。
@@ -154,7 +173,7 @@ def bypass_update_causal_mask(self, attention_mask, *args, **kwargs):
 
 ---
 
-## 七、待确认 / 疑问（自己往下填）
+## 六、待确认 / 疑问（自己往下填）
 
 - [ ] `prepare_conv` 是在哪一步被实际调用的？（提示：搜 `prepare_conv(` 在 llm_quant.py 的调用处）
 - [ ] 第 162-173 行逐层 `mask*2 / mask*10` 的倍数是怎么定出来的？

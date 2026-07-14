@@ -2,10 +2,22 @@
 
 > **流程位置**：整个流程的第一步（`llm_quant.py` 第 5-29 行读取它）。
 > **一句话本质**：`config.yaml` 把所有"可调参数"集中管理，逻辑代码不写死任何路径/超参；改行为只改这一个文件。
+>
+> **本篇结构（四段式）**：一 介绍（是什么、为什么集中管理）→ 二 原理（配置如何被读入、分成哪八段）→ 三 本项目做法（逐段参数详解，含驱动模型适配的 `model_overrides`）。**"官方/通用做法"不涉及**——`config.yaml` 是本项目为端侧量化定制的，没有"官方版配置"可对照。
 
 ---
 
-## 一、它是怎么被读进来的
+## 一、介绍：config.yaml 是什么、为什么集中管理
+
+`config.yaml` 是整个量化/导出流程的**唯一参数入口**（`llm_quant.py` 第 5-29 行读取）。设计目的：**逻辑代码不写死任何路径与超参**，所有可调项（SDK 路径、位宽、数据集、导出 opset、以及驱动模型适配的开关）都集中在这一个文件里——**改行为只改这一个文件**，逻辑代码保持稳定。
+
+下面第二节讲它"怎么被读入、分成哪几段"，第三节逐段解释每个参数。
+
+---
+
+## 二、原理：配置如何被读入、分成哪八段
+
+### 2.1 它是怎么被读进来的
 
 ```python
 # llm_quant.py 第 5-16 行
@@ -27,7 +39,7 @@ _export_cfg= CONFIG['export']
 
 ---
 
-## 二、八个配置段总览
+### 2.2 八个配置段总览
 
 | 段 | 作用 | 关键消费位置 |
 |----|------|--------------|
@@ -42,9 +54,11 @@ _export_cfg= CONFIG['export']
 
 ---
 
-## 三、逐段详解
+## 三、本项目做法：逐段详解（每个参数含义）
 
-### 1. environment（环境与路径）
+> 这一整节就是"本项目改造后的做法"落地——尤其 `model_overrides` 段，直接驱动模型适配（QcAttention / KV Cache / 外部掩码等，详见笔记 02）。
+
+### 3.1 environment（环境与路径）
 
 ```yaml
 environment:
@@ -56,7 +70,7 @@ environment:
 ```
 - `qnn_sdk_root` 最关键：脚本据此设置 `LD_LIBRARY_PATH` 和 `sys.path`，找不到会直接影响运行（见 `run.sh`、`TROUBLESHOOTING.md`）。
 
-### 2. quantization（量化基础）
+### 3.2 quantization（量化基础）
 
 ```yaml
 quantization:
@@ -74,7 +88,7 @@ quantization:
 - `htp_config_file` 决定生成的产物面向哪颗芯片。
 - `skip_prepare`：true 时直接加载之前 prepare 好的模型，省时间（前提是产物已存在，否则报错）。
 
-### 3. model_overrides（模型 config 覆盖）
+### 3.3 model_overrides（模型 config 覆盖）
 
 ```yaml
 model_overrides:
@@ -93,7 +107,7 @@ model_overrides:
 - 这些在第 80-88 行被 `setattr` 到 `llm_config` 上，**直接驱动"模型适配"那一块的行为**（详见笔记 02）。
 - 它们是连接"配置"与"适配代码"的桥梁。
 
-### 4. dataset（数据集）
+### 3.4 dataset（数据集）
 
 ```yaml
 dataset:
@@ -109,7 +123,7 @@ dataset:
 - **校准集**：量化时用来统计激活分布(compute_encodings)。
 - **评估集**：算 PPL 衡量精度。
 
-### 5. seq_mse（SeqMSE 优化）
+### 3.5 seq_mse（SeqMSE 优化）
 
 ```yaml
 seq_mse:
@@ -120,7 +134,7 @@ seq_mse:
 ```
 - SeqMSE：逐层搜索最优量化 scale，降低低位宽(4bit)带来的精度损失。
 
-### 6. evaluation（评估 batch 数）
+### 3.6 evaluation（评估 batch 数）
 
 ```yaml
 evaluation:
@@ -128,7 +142,7 @@ evaluation:
   compute_encodings_num_batches: 20   # 统计激活分布用的 batch 数
 ```
 
-### 7. export（ONNX 导出）
+### 3.7 export（ONNX 导出）
 
 ```yaml
 export:
@@ -136,7 +150,7 @@ export:
   onnx_opset_version: 14      # 最终导出 onnx 的 opset
 ```
 
-### 8. test_vector_layers（测试向量层）
+### 3.8 test_vector_layers（测试向量层）
 
 ```yaml
 test_vector_layers:

@@ -61,6 +61,13 @@ assert update_attr(cache_utils.DynamicCache, 'get_seq_length',
                    DynamicCache_get_seq_length), f"Unknown DynamicCache definition: {cache_utils.DynamicCache}"
 
 
+# ————————————加载模型与执行结构转换————————————
+# 承接上面的适配补丁，本段做三件事：
+# 1) 加载 config 并用 config.yaml 的 model_overrides 覆盖一批端侧开关（如 transposed_key_cache、
+#    use_combined_mask_input 等），这些开关驱动上面适配的具体行为；
+# 2) 加载 tokenizer 和 model——因 modeling_qwen2 已被打过补丁，加载出的 model 天然是适配版；
+# 3) 遍历所有模块触发 prepare_conv，真正把 MLP / lm_head 的 Linear 权重搬成 1×1 Conv
+#    （适配只是“挂上方法”，这里才实际执行转换）。
 import sys, os
 from tqdm import tqdm
 import torch
