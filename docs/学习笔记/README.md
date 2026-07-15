@@ -11,8 +11,8 @@ example1 做的事：**把官方 Qwen2.5-VL-3B 模型，改造并量化成可在
 
 ```
 读配置(config.yaml)
-  → 模型适配(Monkey Patch，替换零件)        ← 当前学习到这里
-  → 加载模型 / tokenizer
+  → 模型适配(Monkey Patch，替换零件)
+  → 加载模型 / tokenizer                      ← 当前学习到这里
   → 浮点模型评估(PPL)
   → prepare(模型准备 / 导出中间结构)
   → 量化(QuantSim：compute_encodings / SeqMSE)
@@ -30,7 +30,9 @@ example1 做的事：**把官方 Qwen2.5-VL-3B 模型，改造并量化成可在
 | 01 | 配置文件 config.yaml 详解 | [01-配置文件config.yaml详解.md](./01-配置文件config.yaml详解.md) | 学习中 |
 | 02 | 模型适配（Monkey Patch，第 50-61 行） | [02-模型适配(Monkey-Patch).md](./02-模型适配(Monkey-Patch).md) | 学习中 |
 | 02-总结 | 模型适配总结篇 · 结构与替换全景 | [02-模型适配总结篇-结构与替换全景.md](./02-模型适配总结篇-结构与替换全景.md) | 学习中 |
-| 03 | 模型/Tokenizer 加载与 config 覆盖 | （待建） | 未开始 |
+| 03 | 模型/Tokenizer 加载与 config 覆盖 | [03-模型与Tokenizer加载与config覆盖.md](./03-模型与Tokenizer加载与config覆盖.md) | 学习中 |
+| 03-附录A | 模型权重文件格式 | [03-附录A-模型权重文件格式.md](./03-附录A-模型权重文件格式.md) | 学习中 |
+| 03-附录B | mmap 与数据搬运路径 | [03-附录B-mmap与数据搬运路径.md](./03-附录B-mmap与数据搬运路径.md) | 学习中 |
 | 04 | PPL 评估是什么、怎么算 | （待建） | 未开始 |
 | 05 | prepare 模型准备阶段 | （待建） | 未开始 |
 | 06 | 量化 QuantSim / SeqMSE / compute_encodings | （待建） | 未开始 |

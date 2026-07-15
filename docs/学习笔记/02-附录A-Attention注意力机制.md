@@ -414,7 +414,7 @@ QcAttention 拆成四种组合：`advance_attention_div` 决定 √d 除在 K �
             attn_weights = attn_weights + causal_mask
 ```
 
-QcAttention：大部分层用 `aimet_torch` 的量化感知 `self.attn_add`，但对数值范围异常的**首/尾层单独放大掩码**（layer0×2、layer27×10）：
+QcAttention：大部分层用 `aimet_torch` 的量化感知 `self.attn_add`，但对**数值范围异常的特定层单独放大掩码**（layer0×2、layer27×10）：
 
 ```162:173:example1/llm_utils/qcqwen2_adaptation.py
             if self.layer_idx == 0:
@@ -425,7 +425,7 @@ QcAttention：大部分层用 `aimet_torch` 的量化感知 `self.attn_add`，�
                 attn_weights = self.attn_add(attn_weights, attention_mask)
 ```
 
-> **区别**：(a) 用可被量化工具识别的 `Add` 算子；(b) 首尾层 attn_weights min/max 过大（注释 `too huge minmax`），放大掩码保证被屏蔽位置仍被有效压到极小——经验性量化调优。另外官方会 `[:, :, :, :key.shape[-2]]` 切片，Qc 因定长外部掩码不切。
+> **区别**：(a) 用可被量化工具识别的 `Add` 算子；(b) 特定层（layer0、layer27）的 attn_weights min/max 过大（注释 `too huge minmax`），放大掩码保证被屏蔽位置仍被有效压到极小——经验性量化调优。⚠️ 本模型共 **36 层**（0~35），layer0 是首层、**layer27 是中间偏后的某一层（并非最后一层，最后是 layer35）**，只是它实测数值异常才被特殊处理。另外官方会 `[:, :, :, :key.shape[-2]]` 切片，Qc 因定长外部掩码不切。
 
 **⑧ softmax + 加权 V：去掉 dropout**
 

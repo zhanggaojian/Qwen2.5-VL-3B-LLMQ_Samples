@@ -222,12 +222,12 @@ def DynamicCache_update(
 **① 签名（`def ... (self, key_states, value_states, layer_idx, cache_kwargs)`）**
 - `self`：缓存对象，内部两个 list `self.key_cache` / `self.value_cache`（每层一个元素）。
 - `key_states`/`value_states`：**本层本次刚算出的新 K/V**（来自 `k_proj_conv`/`v_proj_conv`）。
-- `layer_idx`：**第几层**在调用——模型 28 层，每层 self_attn 各调一次，靠它区分存到哪个槽。
+- `layer_idx`：**第几层**在调用——模型 36 层，每层 self_attn 各调一次，靠它区分存到哪个槽。
 - 返回 `Tuple[K, V]`：**拿去算注意力的那份**。
 
 **② `if layer_idx == 0: self._seen_tokens += value_states.shape[-2]`**
 - `_seen_tokens` = 整个模型累计处理的 token 数；`shape[-2]` 是本次新增 token 数（V 没转置，seq 维稳定在 `-2`）。
-- ⚠️ **为什么限定第 0 层**：一次前向里 28 层**各调一次** update，若每层都加会把 token 数**重复计 28 倍**，所以只让第 0 层记一次账。
+- ⚠️ **为什么限定第 0 层**：一次前向里 36 层**各调一次** update，若每层都加会把 token 数**重复计 36 倍**，所以只让第 0 层记一次账。
 
 **③ `if len(self.key_cache) <= layer_idx:`（首次填充分支）**
 - 条件成立 = **这层还没有缓存槽**（prefill 首跑时 list 为空）→ `append` 把新 K/V 落为这层第一份历史，直接原样返回。
