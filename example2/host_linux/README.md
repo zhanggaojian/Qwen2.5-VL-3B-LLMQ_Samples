@@ -1,5 +1,14 @@
 # Generate model artifacts for execution on SnapDragon devices
 
+> **当前仓库实际入口**：本目录没有下文所说的 `qnn_model_prepare.ipynb`，当前应从本目录运行 `qnn_compile_deploy.py`。完整前置检查和阶段验收见 [仓库运行指南](../../README.md)；下方 Notebook 内容是上游遗留说明，保留作环境参考。
+
+```bash
+cd ~/autodl-tmp/zgj/code/qwen25/example2/host_linux
+PYTHONUNBUFFERED=1 python qnn_compile_deploy.py 2>&1 | tee qnn_compile.log
+```
+
+当前脚本实际生成 AR1/AR128 的 `*_quantized.dlc`；Context Binary 相关命令尚未启用。请逐阶段检查文件，不要只根据日志中的 `done` 判断成功。
+
 ## Tested Environment
 
 **Linux x86 PC**
@@ -9,7 +18,7 @@
 - Release:        22.04
 - Platform: x86_64 AMD
 
-## Setup 
+## Setup
 The Python environment can be set up using either Anaconda or Python virtual environment (venv).
 
 **Note:** One of the following two steps to setup the Python environment must be executed before executing the notebook.
@@ -27,12 +36,12 @@ If you have already started the jupyter notebook, configure the Python environme
 3. Configure an Anaconda environment with the following commands in the Ubuntu 22.04 terminal.
 
     ```conda create --name llama_env python=3.10```
-    
+
     ```conda activate llama_env```
-    
+
     ```conda install ipykernel```
-    
-    ```ipython kernel install --user --name=llama_env``` 
+
+    ```ipython kernel install --user --name=llama_env```
 
 ### Setup venv (non-Anaconda) in an Ubuntu 22.04 terminal
 

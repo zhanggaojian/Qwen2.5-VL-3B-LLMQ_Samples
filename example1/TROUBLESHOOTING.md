@@ -139,7 +139,7 @@ export TMP="${TMPDIR_PATH}"
 | 大量 `*.weight` / `*.bias` | 各几 M | ONNX 的外置权重数据（模型 >2GB，权重单独存盘） | ✅ 需要（必须与 `.onnx` 同目录） |
 | `qwen25llm.encodings` | 66M | ONNX 格式量化 encodings（QNN 用的就是这个） | ✅ 需要 |
 | `qwen25llm.pth` | 12G | torch 权重 checkpoint | ❌ 不需要，可删 |
-| `qwen25llm_torch.encoding` | 336M | torch 格式 encodings | ❌ QNN 不用，可删 |
+| `qwen25llm_torch.encodings` | 336M | torch 格式 encodings | ❌ QNN 不用，可删 |
 
 **交给 example2 的输入（三类，必须同目录）**：
 
@@ -153,7 +153,7 @@ qwen25llm.encodings
 
 ```bash
 rm .../onnx/qwen25llm.pth
-rm .../onnx/qwen25llm_torch.encoding
+rm .../onnx/qwen25llm_torch.encodings
 ```
 
 ---
