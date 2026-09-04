@@ -1,6 +1,6 @@
 # 02-附录C · 张量维度 [B, seq, hidden]
 
-> **关联**：这是看懂 [02-附录A-Attention注意力机制.md](./02-附录A-Attention注意力机制.md) 和 [02-附录B-Linear与Conv算子转换.md](./02-附录B-Linear与Conv算子转换.md) 里所有 `reshape / transpose / view` 的**地基**。
+> **关联**：这是看懂 [02-附录A-Attention注意力机制.md](./02-附录A-Attention注意力机制.md) 和 [02-附录B-Linear与Conv算子转换.md](./02-附录B-Linear与Conv算子转换.md) 里所有 `reshape / transpose / view` 的**地基**。本篇只讲张量的**形状**；权重、激活、KV Cache 三类张量的**角色区分**及各自对应的 encoding，见 [07-附录B · 6.1 三类 Tensor](./07-附录B-Encoding量化参数基础.md)。
 > **一句话本质**：模型里流动的文本数据，最常见形状就是三维 `[B, seq, hidden]` —— **几个句子、每句几个词、每个词几维向量**。
 
 > **本篇是基础概念篇**（全笔记统一风格）：只分 **① 介绍 → ② 原理** 两段；张量维度是通用地基，**不涉及"官方 vs 本项目改造"的对比**。

@@ -21,8 +21,8 @@ example1  ──→  example2  ──→  example3
 
 | | 阶段 | 在哪跑 | 是否需要 GPU | 做什么 | 主要产物 |
 |---|---|---|---|---|---|
-| **example1** | 模型量化 | x86 Linux | ✅ 需要（PyTorch forward / SeqMSE / compute_encodings 在 cuda） | AIMET 量化（prepare + SeqMSE + compute_encodings） | `qwen25llm.onnx` + `*.weight/*.bias` + `qwen25llm.encodings` |
-| **example2** | 主机编译 | x86 Linux 主机（可与 example1 同一台 GPU 服务器） | ❌ 不需要（QNN x86 主机工具链，纯 CPU） | QNN 编译（split onnx、MHA2SHA 转换、ONNX→DLC→量化 DLC→context binary） | 设备可执行的模型 binary（context 序列化文件） |
+| **example1** | 模型量化 | x86 Linux | ✅ 需要（PyTorch forward / SeqMSE / compute_encodings 在 cuda） | AIMET 量化（prepare + SeqMSE + compute_encodings） | ONNX + 外置权重 + Encoding + `qt_0.pkl` |
+| **example2** | 主机编译 | x86 Linux 主机（可与 example1 同一台 GPU 服务器） | ❌ 不需要（QNN x86 主机工具链，纯 CPU） | QNN 编译（split onnx、MHA2SHA 转换、ONNX→DLC→量化 DLC） | 当前脚本产出 AR1/AR128 量化 DLC；Context Binary 需另行启用 |
 | **example3** | 端侧运行 | 高通 SnapDragon 设备 | ❌（端侧 NPU/HTP） | 准备 embedding/输入、推送库和模型、用 Genie 推理 | 实际推理输出（文本结果） |
 
 > 说明：example2 虽然常常**就在那台 GPU 服务器上执行**（GPU 服务器本身是 x86 Linux 机器），但它跑的是 QNN 的 `x86_64-linux-clang` 主机工具（`qairt-converter` / `qairt-quantizer` / `qnn-context-binary-generator` / `mha2sha-onnx-converter`），**全在 CPU 上，不使用 GPU**。它只要求 x86 Linux + QNN SDK。
@@ -42,9 +42,9 @@ example1  ──→  example2  ──→  example3
   5. 生成 test vectors；
   6. 导出 ONNX + encodings。
 - **关键文件**：`example1/llm_quant.py`、`config.yaml`、`run.sh`
-- **产物（给 example2）**：`output/onnx/` 下的 `.onnx` + 所有 `.weight/.bias` + `.encodings`
+- **产物（给 example2）**：`output/onnx/` 下的 `.onnx`、全部外置权重、`.encodings`，以及 `output/test_vectors/qt_0.pkl`
 
-> 详见 `example1/PIPELINE.md`（流程详解）和 `example1/TROUBLESHOOTING.md`（问题与解决）。
+> 详见 `docs/PIPELINE.md`（流程详解）和 `example1/TROUBLESHOOTING.md`（问题与解决）。
 
 ### example2 — 主机编译（Generate model artifacts for SnapDragon）
 
@@ -56,11 +56,11 @@ example1  ──→  example2  ──→  example3
   3. **MHA→SHA**（`mha2sha-onnx-converter`）：把多头注意力转成单头（SHA）形式，适配 HTP，输入 AIMET 的 `.encodings`；
   4. **ONNX→DLC**（`qairt-converter`）：转成 QNN DLC 表示，套用 `--quantization_overrides`（encodings）；
   5. **量化 DLC**（`qairt-quantizer`）：act 16bit / bias 32bit，生成 `*_quantized.dlc`；
-  6. **生成 context binary**（`qnn-context-binary-generator`）：生成 HTP weight-sharing context 序列化文件（可部署到 8 Gen4 Android 设备）。
+  6. **生成 context binary**（`qnn-context-binary-generator`）：这是部署目标，但当前 `qnn_compile_deploy.py` 中的示例命令和自动调用均未启用，不能把它当作脚本的现有输出。
   - HTP 后端配置：`HtpConfigFile_*.json`、`htp_backend_ext_config*.json`（按目标芯片改 soc_id / dsp_arch）。
 - **环境**：Ubuntu 22.04 + Python 3.10 + QNN SDK，按 `host_linux/README.md` 配置。
 - **关键文件**：`example2/host_linux/qnn_compile_deploy.py`、`example2/G2G/MHA2SHA/`、`example2/G2G/split_onnx_utils/`
-- **产物（给 example3）**：设备可执行的 context 序列化模型 binary
+- **当前产物**：AR1/AR128 的 `*_quantized.dlc`；为 example3 准备设备可执行的 Context Binary 还需要启用并验证后续生成步骤。
 
 ### example3 — 端侧运行（run on device with Genie）
 
@@ -87,8 +87,11 @@ example1  ──→  example2  ──→  example3
 原始 HF 模型 (Qwen2.5-VL-3B)
         │  example1：量化
         ▼
-.onnx + .weight/.bias + .encodings
+.onnx + 外置权重 + .encodings + qt_0.pkl
         │  example2：QNN 编译（MHA2SHA / split / compile）
+        ▼
+AR1 / AR128 Quantized DLC
+        │  Context Binary 生成（当前需另行启用）
         ▼
 设备可执行模型 binary
         │  example3：推送设备 + Genie 运行

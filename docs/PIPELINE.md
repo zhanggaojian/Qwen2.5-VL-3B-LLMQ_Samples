@@ -83,6 +83,8 @@
   - `true`：跳过，直接从 `output/prepare/` 加载已有产物（省时间省磁盘）。
 - 产物：`output/prepare/qwen25llm_kvcache_36_layer.{py,safetensors,json,...}`
 
+阶段级细节、QuIR/QNNIR 的证据边界、Emitter 产物和检查清单见 [学习笔记附录C · QAIRT model_preparer 内部流程](./学习笔记/06-附录C-QAIRT-model_preparer内部流程.md)。
+
 ### ⑥ 评估 prepared 模型 PPL（L413–L427）
 
 - 用 prepared 模型再算一次 PPL。
